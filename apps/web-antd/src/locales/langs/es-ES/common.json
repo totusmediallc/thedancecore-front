@@ -1,0 +1,12 @@
+{
+  "login": "Entrar",
+  "create": "Crear",
+  "edit": "Editar",
+  "delete": "Eliminar",
+  "confirm": "Confirmar",
+  "cancel": "Cancelar",
+  "enabled": "Habilitado",
+  "disabled": "Deshabilitado",
+  "loadingMenu": "Cargando menú",
+  "noData": "No hay datos disponibles"
+}

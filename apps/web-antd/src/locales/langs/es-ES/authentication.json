@@ -1,0 +1,15 @@
+{
+  "welcomeBack": "Bienvenido de nuevo",
+  "loginSubtitle": "Inicia sesión para continuar",
+  "rememberMe": "Recuérdame",
+  "forgetPassword": "¿Olvidaste tu contraseña?",
+  "mobileLogin": "Inicio de sesión móvil",
+  "qrcodeLogin": "Inicio con código QR",
+  "thirdpartylogin": "Acceso con terceros",
+  "accountTip": "¿No tienes cuenta?",
+  "createAccount": "Crear cuenta",
+  "password": "Contraseña",
+  "passwordTip": "Ingresa tu contraseña",
+  "loginSuccess": "Inicio de sesión correcto",
+  "loginSuccessDesc": "Bienvenido"
+}
