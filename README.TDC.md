@@ -91,7 +91,7 @@ Si cambias varias áreas a la vez, puedes usar el scope general `project`.
 
 ### Formas fáciles o guiadas
 
-1) Asistente interactivo (recomendado):
+1. Asistente interactivo (recomendado):
 
 ```
 pnpm commit
@@ -107,7 +107,7 @@ npx czg
 
 El asistente te pide: type → scope → subject → body → footer. Elige un scope de la lista anterior. El commit se crea con el formato correcto.
 
-2) Manual, con ejemplos listos:
+2. Manual, con ejemplos listos:
 
 - Nueva funcionalidad en la app (p. ej., Users/Settings)
 
