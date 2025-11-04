@@ -12,8 +12,14 @@ import { resetAllStores, useAccessStore, useUserStore } from '@vben/stores';
 import { notification } from 'ant-design-vue';
 import { defineStore } from 'pinia';
 
-import { getAccessCodesApi, getUserInfoApi, loginApi, logoutApi } from '#/api';
+import { getUserInfoApi, loginApi, logoutApi } from '#/api';
 import { $t } from '#/locales';
+import {
+  deriveAccessCodes,
+  getTokenExpiration,
+  mapBackendUserToUserInfo,
+  resolveUserHomePath,
+} from '#/utils/auth';
 
 export const useAuthStore = defineStore('auth', () => {
   const accessStore = useAccessStore();
@@ -42,6 +48,8 @@ export const useAuthStore = defineStore('auth', () => {
 
       accessStore.setAccessToken('dev-token');
       accessStore.setRefreshToken?.('dev-refresh');
+      accessStore.setAccessTokenExpiresAt(Date.now() + 60 * 60 * 1000);
+      accessStore.setRefreshTokenExpiresAt(Date.now() + 24 * 60 * 60 * 1000);
       userStore.setUserInfo(demoUser);
       accessStore.setAccessCodes?.([]);
 
@@ -59,7 +67,7 @@ export const useAuthStore = defineStore('auth', () => {
     let userInfo: null | UserInfo = null;
     try {
       loginLoading.value = true;
-      const { accessToken, refreshToken } = await loginApi(params);
+      const { accessToken, refreshToken, user } = await loginApi(params);
 
       // 如果成功获取到 accessToken
       if (accessToken) {
@@ -68,16 +76,17 @@ export const useAuthStore = defineStore('auth', () => {
           accessStore.setRefreshToken(refreshToken);
         }
 
-        // 获取用户信息并存储到 accessStore 中
-        const [fetchUserInfoResult, accessCodes] = await Promise.all([
-          fetchUserInfo(),
-          getAccessCodesApi(),
-        ]);
+        accessStore.setAccessTokenExpiresAt(getTokenExpiration(accessToken));
+        accessStore.setRefreshTokenExpiresAt(getTokenExpiration(refreshToken));
 
-        userInfo = fetchUserInfoResult;
+        userInfo = mapBackendUserToUserInfo(
+          user,
+          accessToken,
+          resolveUserHomePath(user?.homePath),
+        );
 
         userStore.setUserInfo(userInfo);
-        accessStore.setAccessCodes(accessCodes);
+        accessStore.setAccessCodes(deriveAccessCodes(userInfo.roles));
 
         if (accessStore.loginExpired) {
           accessStore.setLoginExpired(false);
@@ -85,7 +94,7 @@ export const useAuthStore = defineStore('auth', () => {
           onSuccess
             ? await onSuccess?.()
             : await router.push(
-                userInfo.homePath || preferences.app.defaultHomePath,
+                resolveUserHomePath(userInfo.homePath),
               );
         }
 
@@ -114,6 +123,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
     resetAllStores();
     accessStore.setLoginExpired(false);
+    accessStore.setAccessTokenExpiresAt(null);
+    accessStore.setRefreshTokenExpiresAt(null);
 
     // 回登录页带上当前路由地址
     await router.replace({
@@ -130,6 +141,7 @@ export const useAuthStore = defineStore('auth', () => {
     let userInfo: null | UserInfo = null;
     userInfo = await getUserInfoApi();
     userStore.setUserInfo(userInfo);
+    accessStore.setAccessCodes(deriveAccessCodes(userInfo?.roles));
     return userInfo;
   }
 
