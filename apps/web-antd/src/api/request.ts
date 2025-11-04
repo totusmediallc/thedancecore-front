@@ -16,8 +16,11 @@ import { useAccessStore } from '@vben/stores';
 import { message } from 'ant-design-vue';
 
 import { useAuthStore } from '#/store';
+import { getTokenExpiration, isTokenExpiringSoon } from '#/utils/auth';
 
 import { refreshTokenApi } from './core';
+
+const TOKEN_REFRESH_THRESHOLD = 60_000;
 
 const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
 
@@ -50,10 +53,31 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
    */
   async function doRefreshToken() {
     const accessStore = useAccessStore();
-    const resp = await refreshTokenApi();
-    const newToken = resp.data;
-    accessStore.setAccessToken(newToken);
-    return newToken;
+    const refreshToken = accessStore.refreshToken;
+
+    if (!refreshToken) {
+      throw new Error('Missing refresh token.');
+    }
+
+    const refreshTokenExpiresAt = accessStore.refreshTokenExpiresAt;
+    if (refreshTokenExpiresAt && Date.now() >= refreshTokenExpiresAt) {
+      throw new Error('Refresh token already expired.');
+    }
+
+    const response = await refreshTokenApi(refreshToken);
+
+    const { accessToken, refreshToken: nextRefreshToken } = response;
+
+    accessStore.setAccessToken(accessToken);
+    accessStore.setAccessTokenExpiresAt(getTokenExpiration(accessToken));
+
+    const effectiveRefreshToken = nextRefreshToken ?? refreshToken;
+    accessStore.setRefreshToken(effectiveRefreshToken);
+    accessStore.setRefreshTokenExpiresAt(
+      getTokenExpiration(effectiveRefreshToken),
+    );
+
+    return accessToken;
   }
 
   function formatToken(token: null | string) {
@@ -64,8 +88,65 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   client.addRequestInterceptor({
     fulfilled: async (config) => {
       const accessStore = useAccessStore();
+      config.headers = config.headers || {};
 
-      config.headers.Authorization = formatToken(accessStore.accessToken);
+      const requiresAuth = Boolean(accessStore.accessToken);
+      const refreshToken = accessStore.refreshToken;
+      const refreshTokenExpired =
+        !refreshToken ||
+        (accessStore.refreshTokenExpiresAt &&
+          Date.now() >= accessStore.refreshTokenExpiresAt);
+
+      if (requiresAuth && refreshTokenExpired) {
+        await doReAuthenticate();
+        throw new Error('Refresh token expired.');
+      }
+
+      if (
+        requiresAuth &&
+        preferences.app.enableRefreshToken &&
+        isTokenExpiringSoon(
+          accessStore.accessTokenExpiresAt,
+          TOKEN_REFRESH_THRESHOLD,
+        )
+      ) {
+        if (client.isRefreshing) {
+          try {
+            await new Promise((resolve, reject) => {
+              client.refreshTokenQueue.push((newToken: string) => {
+                if (!newToken) {
+                  reject(new Error('Unable to refresh access token.'));
+                  return;
+                }
+                config.headers.Authorization = formatToken(newToken);
+                resolve(true);
+              });
+            });
+          } catch (error) {
+            await doReAuthenticate();
+            throw error;
+          }
+        } else {
+          client.isRefreshing = true;
+          try {
+            const newToken = await doRefreshToken();
+            client.refreshTokenQueue.forEach((callback) => callback(newToken));
+            client.refreshTokenQueue = [];
+            config.headers.Authorization = formatToken(newToken);
+          } catch (error) {
+            client.refreshTokenQueue.forEach((callback) => callback(''));
+            client.refreshTokenQueue = [];
+            await doReAuthenticate();
+            throw error;
+          } finally {
+            client.isRefreshing = false;
+          }
+        }
+      }
+
+      if (!config.headers.Authorization) {
+        config.headers.Authorization = formatToken(accessStore.accessToken);
+      }
       config.headers['Accept-Language'] = preferences.app.locale;
       return config;
     },

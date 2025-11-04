@@ -1,29 +1,45 @@
 import { baseRequestClient, requestClient } from '#/api/request';
 
 export namespace AuthApi {
-  /** 登录接口参数 */
   export interface LoginParams {
     email: string;
     password: string;
   }
 
-  /** 登录接口返回值 */
-  export interface LoginResult {
-    accessToken: string;
-    refreshToken?: string;
+  export interface AuthenticatedUser {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName?: string | null;
+    role: 'admin' | 'client';
+    isActive: boolean;
+    lastLoginAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    avatarUrl?: string | null;
+    homePath?: string | null;
   }
 
-  export interface RefreshTokenResult {
-    data: string;
-    status: number;
+  export interface LoginResult {
+    accessToken: string;
+    refreshToken: string;
+    tokenType: 'Bearer';
+    expiresIn: string;
+    user: AuthenticatedUser;
+  }
+
+  export type RefreshTokenParams = {
+    refreshToken: string;
+  };
+
+  export type RefreshTokenResult = LoginResult;
+
+  export interface LogoutResponse {
+    message: string;
   }
 }
 
-/**
- * 登录
- */
 export async function loginApi(data: AuthApi.LoginParams) {
-  // Compatibilidad con servidor Mock (usa username/password)
   const payload: Record<string, any> = { ...data };
   if (import.meta.env.VITE_NITRO_MOCK === 'true') {
     payload.username = data.email;
@@ -31,27 +47,17 @@ export async function loginApi(data: AuthApi.LoginParams) {
   return requestClient.post<AuthApi.LoginResult>('/auth/login', payload);
 }
 
-/**
- * 刷新accessToken
- */
-export async function refreshTokenApi() {
-  return baseRequestClient.post<AuthApi.RefreshTokenResult>('/auth/refresh', {
-    withCredentials: true,
+export async function refreshTokenApi(refreshToken: string) {
+  const response = await baseRequestClient.post('/auth/refresh', {
+    refreshToken,
   });
+  return (response as { data: AuthApi.RefreshTokenResult }).data;
 }
 
-/**
- * 退出登录
- */
 export async function logoutApi() {
-  return baseRequestClient.post('/auth/logout', {
-    withCredentials: true,
-  });
+  return requestClient.post<AuthApi.LogoutResponse>('/auth/logout');
 }
 
-/**
- * 获取用户权限码
- */
 export async function getAccessCodesApi() {
-  return requestClient.get<string[]>('/auth/codes');
+  return [] as string[];
 }
