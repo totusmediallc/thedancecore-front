@@ -13,6 +13,7 @@ import {
   cilReload,
   cilTrash,
   cilWarning,
+  cilLocationPin,
 } from '@coreui/icons'
 import {
   CAlert,
@@ -55,10 +56,13 @@ import {
   listAcademies,
   updateAcademy,
 } from '../../services/academiesApi'
+import { listColonies, listMunicipalities, listStates } from '../../services/locationsApi'
 
 const DEFAULT_FILTERS = {
   search: '',
-  city: '',
+  stateId: '',
+  municipalityId: '',
+  colonyId: '',
   hasWebsite: '',
   page: 1,
   limit: 10,
@@ -123,6 +127,26 @@ const AcademyFormModal = ({
 }) => {
   const isEditMode = mode === 'edit'
 
+  const initialLocation = useMemo(() => {
+    if (!isEditMode || !academy?.colony) {
+      return {
+        state: null,
+        municipality: null,
+        colony: null,
+      }
+    }
+
+    const colony = academy.colony
+    const municipality = colony.municipality ?? null
+    const state = municipality?.state ?? null
+
+    return {
+      state,
+      municipality,
+      colony,
+    }
+  }, [academy, isEditMode])
+
   const baseState = useMemo(
     () =>
       isEditMode && academy
@@ -131,35 +155,297 @@ const AcademyFormModal = ({
             contactPhoneNumber: academy.contactPhoneNumber ?? '',
             mail: academy.mail ?? '',
             web: academy.web ?? '',
-            city: academy.city ?? '',
             googlemaps: academy.googlemaps ?? '',
             logo: academy.logo ?? '',
+            stateId: initialLocation.state?.id ? String(initialLocation.state.id) : '',
+            municipalityId: initialLocation.municipality?.id
+              ? String(initialLocation.municipality.id)
+              : '',
+            colonyId: initialLocation.colony?.id ? String(initialLocation.colony.id) : '',
           }
         : {
             name: '',
             contactPhoneNumber: '',
             mail: '',
             web: '',
-            city: '',
             googlemaps: '',
             logo: '',
+            stateId: '',
+            municipalityId: '',
+            colonyId: '',
           },
-    [academy, isEditMode],
+    [academy, initialLocation, isEditMode],
   )
 
   const [formState, setFormState] = useState(baseState)
   const [errors, setErrors] = useState({})
 
+  const [states, setStates] = useState([])
+  const [statesLoading, setStatesLoading] = useState(false)
+  const [statesError, setStatesError] = useState(null)
+
+  const [municipalities, setMunicipalities] = useState([])
+  const [municipalitiesLoading, setMunicipalitiesLoading] = useState(false)
+  const [municipalitiesError, setMunicipalitiesError] = useState(null)
+  const [municipalitySearch, setMunicipalitySearch] = useState('')
+
+  const [colonies, setColonies] = useState([])
+  const [coloniesLoading, setColoniesLoading] = useState(false)
+  const [coloniesError, setColoniesError] = useState(null)
+  const [colonySearch, setColonySearch] = useState('')
+  const [selectedColonySnapshot, setSelectedColonySnapshot] = useState(
+    initialLocation.colony ?? null,
+  )
+
   useEffect(() => {
     if (visible) {
       setFormState(baseState)
       setErrors({})
+      setMunicipalitySearch('')
+      setColonySearch('')
+      setSelectedColonySnapshot(initialLocation.colony ?? null)
     }
-  }, [baseState, visible])
+  }, [baseState, initialLocation, visible])
+
+  const loadStates = useCallback(async () => {
+    setStatesLoading(true)
+    setStatesError(null)
+    try {
+      const response = await listStates({ countryId: 1 })
+      setStates(Array.isArray(response) ? response : [])
+    } catch (error) {
+      console.error('Unable to load states', error)
+      setStatesError(getErrorMessage(error, 'No se pudieron cargar los estados'))
+    } finally {
+      setStatesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!visible) {
+      return
+    }
+
+    loadStates()
+  }, [loadStates, visible])
+
+  useEffect(() => {
+    if (!visible) {
+      return
+    }
+
+    if (!formState.stateId) {
+      setMunicipalities([])
+      setMunicipalitiesError(null)
+      setMunicipalitySearch('')
+      return
+    }
+
+    let isMounted = true
+    setMunicipalitiesLoading(true)
+    setMunicipalitiesError(null)
+
+    ;(async () => {
+      try {
+        const response = await listMunicipalities({ stateId: formState.stateId })
+        if (!isMounted) {
+          return
+        }
+        const items = Array.isArray(response) ? response : []
+        const sorted = [...items].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'es'))
+        setMunicipalities(sorted)
+      } catch (error) {
+        if (isMounted) {
+          console.error('Unable to load municipalities', error)
+          setMunicipalitiesError(getErrorMessage(error, 'No se pudieron cargar los municipios'))
+          setMunicipalities([])
+        }
+      } finally {
+        if (isMounted) {
+          setMunicipalitiesLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      isMounted = false
+    }
+  }, [formState.stateId, visible])
+
+  useEffect(() => {
+    if (!visible) {
+      return
+    }
+
+    if (!formState.municipalityId) {
+      setColonies([])
+      setColoniesError(null)
+      setColonySearch('')
+      return
+    }
+
+    let isCancelled = false
+    setColoniesLoading(true)
+    setColoniesError(null)
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const response = await listColonies({
+          municipalityId: formState.municipalityId,
+          search: colonySearch.trim() || undefined,
+        })
+        if (isCancelled) {
+          return
+        }
+        const items = Array.isArray(response) ? response : []
+        let merged = [...items]
+
+        const candidate = (() => {
+          if (!formState.colonyId) {
+            return selectedColonySnapshot
+          }
+
+          const directMatch = merged.find(
+            (colony) => String(colony.id) === formState.colonyId,
+          )
+          if (directMatch) {
+            return directMatch
+          }
+
+          if (
+            selectedColonySnapshot &&
+            String(
+              selectedColonySnapshot.municipalityId ?? selectedColonySnapshot.municipality?.id ?? '',
+            ) === formState.municipalityId &&
+            String(selectedColonySnapshot.id) === formState.colonyId
+          ) {
+            return selectedColonySnapshot
+          }
+
+          if (
+            initialLocation.colony &&
+            String(initialLocation.colony.id) === formState.colonyId &&
+            String(
+              initialLocation.colony.municipalityId ?? initialLocation.municipality?.id ?? '',
+            ) === formState.municipalityId
+          ) {
+            return initialLocation.colony
+          }
+
+          return null
+        })()
+
+        if (
+          candidate &&
+          String(candidate.municipalityId ?? candidate.municipality?.id ?? '') ===
+            formState.municipalityId &&
+          !merged.some((colony) => colony.id === candidate.id)
+        ) {
+          merged.push(candidate)
+        }
+
+        merged.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'es'))
+        setColonies(merged)
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('Unable to load colonies', error)
+          setColoniesError(getErrorMessage(error, 'No se pudieron cargar las colonias'))
+          setColonies([])
+        }
+      } finally {
+        if (!isCancelled) {
+          setColoniesLoading(false)
+        }
+      }
+    }, 300)
+
+    return () => {
+      isCancelled = true
+      clearTimeout(timeoutId)
+    }
+  }, [
+    colonySearch,
+    formState.colonyId,
+    formState.municipalityId,
+    initialLocation,
+    selectedColonySnapshot,
+    visible,
+  ])
+
+  const sortedStates = useMemo(
+    () => [...states].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'es')),
+    [states],
+  )
+
+  const filteredMunicipalities = useMemo(() => {
+    const normalized = municipalitySearch.trim().toLowerCase()
+    if (!normalized) {
+      return municipalities
+    }
+    return municipalities.filter((municipality) =>
+      municipality.name?.toLowerCase().includes(normalized),
+    )
+  }, [municipalities, municipalitySearch])
+
+  const filteredColonies = useMemo(() => {
+    const normalized = colonySearch.trim().toLowerCase()
+    if (!normalized) {
+      return colonies
+    }
+    return colonies.filter((colony) => colony.name?.toLowerCase().includes(normalized))
+  }, [colonies, colonySearch])
 
   const handleChange = (field) => (event) => {
     const value = event.target.value
     setFormState((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleStateChange = (event) => {
+    const value = event.target.value
+    setFormState((prev) => ({
+      ...prev,
+      stateId: value,
+      municipalityId: '',
+      colonyId: '',
+    }))
+    setMunicipalitySearch('')
+    setMunicipalitiesError(null)
+    setColonies([])
+    setColoniesError(null)
+    setColonySearch('')
+    setSelectedColonySnapshot(null)
+  }
+
+  const handleMunicipalityChange = (event) => {
+    const value = event.target.value
+    setFormState((prev) => ({
+      ...prev,
+      municipalityId: value,
+      colonyId: '',
+    }))
+    setColonies([])
+    setColoniesError(null)
+    setColonySearch('')
+    setSelectedColonySnapshot(null)
+  }
+
+  const handleColonyChange = (event) => {
+    const value = event.target.value
+    setFormState((prev) => ({ ...prev, colonyId: value }))
+    if (!value) {
+      setSelectedColonySnapshot(null)
+      return
+    }
+
+    const matchFromList = colonies.find((colony) => String(colony.id) === value)
+    if (matchFromList) {
+      setSelectedColonySnapshot(matchFromList)
+      return
+    }
+
+    if (initialLocation.colony && String(initialLocation.colony.id) === value) {
+      setSelectedColonySnapshot(initialLocation.colony)
+    }
   }
 
   const validate = useCallback(() => {
@@ -188,8 +474,18 @@ const AcademyFormModal = ({
       }
     }
 
-    if (!formState.city.trim()) {
-      validationErrors.city = 'La ciudad es obligatoria'
+    if (!formState.stateId) {
+      validationErrors.stateId = 'El estado es obligatorio'
+    }
+
+    if (!formState.municipalityId) {
+      validationErrors.municipalityId = 'El municipio es obligatorio'
+    }
+
+    if (!formState.colonyId) {
+      validationErrors.colonyId = 'La colonia es obligatoria'
+    } else if (Number.isNaN(Number(formState.colonyId))) {
+      validationErrors.colonyId = 'Selecciona una colonia válida'
     }
 
     if (!formState.googlemaps.trim()) {
@@ -219,7 +515,7 @@ const AcademyFormModal = ({
       name: formState.name.trim(),
       contactPhoneNumber: formState.contactPhoneNumber.trim(),
       mail: formState.mail.trim(),
-      city: formState.city.trim(),
+      colonyId: Number(formState.colonyId),
       googlemaps: formState.googlemaps.trim(),
     }
 
@@ -263,7 +559,7 @@ const AcademyFormModal = ({
                 onChange={handleChange('contactPhoneNumber')}
                 required
                 invalid={Boolean(errors.contactPhoneNumber)}
-                placeholder="Ej: +34 600 123 456"
+                placeholder="Ej: +52 55 1234 5678"
                 disabled={submitting}
               />
               {errors.contactPhoneNumber && (
@@ -284,33 +580,6 @@ const AcademyFormModal = ({
               {errors.mail && <div className="invalid-feedback d-block">{errors.mail}</div>}
             </CCol>
             <CCol xs={12} md={6}>
-              <CFormLabel htmlFor="academy-city">Ciudad</CFormLabel>
-              <CFormInput
-                id="academy-city"
-                value={formState.city}
-                onChange={handleChange('city')}
-                required
-                invalid={Boolean(errors.city)}
-                placeholder="Ej: Madrid"
-                disabled={submitting}
-              />
-              {errors.city && <div className="invalid-feedback d-block">{errors.city}</div>}
-            </CCol>
-            <CCol xs={12}>
-              <CFormLabel htmlFor="academy-googlemaps">Enlace de Google Maps</CFormLabel>
-              <CFormTextarea
-                id="academy-googlemaps"
-                value={formState.googlemaps}
-                onChange={handleChange('googlemaps')}
-                rows={3}
-                required
-                invalid={Boolean(errors.googlemaps)}
-                placeholder="https://maps.google.com/..."
-                disabled={submitting}
-              />
-              {errors.googlemaps && <div className="invalid-feedback d-block">{errors.googlemaps}</div>}
-            </CCol>
-            <CCol xs={12} md={6}>
               <CFormLabel htmlFor="academy-web">Sitio web</CFormLabel>
               <CInputGroup>
                 <CInputGroupText>
@@ -324,8 +593,132 @@ const AcademyFormModal = ({
                   invalid={Boolean(errors.web)}
                   disabled={submitting}
                 />
-                {errors.web && <div className="invalid-feedback d-block">{errors.web}</div>}
               </CInputGroup>
+              {errors.web && <div className="invalid-feedback d-block">{errors.web}</div>}
+            </CCol>
+            <CCol xs={12}>
+              <CRow className="g-3">
+                <CCol xs={12} md={4}>
+                  <CFormLabel htmlFor="academy-state">Estado</CFormLabel>
+                  <CFormSelect
+                    id="academy-state"
+                    value={formState.stateId}
+                    onChange={handleStateChange}
+                    invalid={Boolean(errors.stateId)}
+                    disabled={submitting || statesLoading}
+                  >
+                    <option value="">Selecciona un estado</option>
+                    {sortedStates.map((state) => (
+                      <option key={state.id} value={state.id}>
+                        {state.name}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                  {statesLoading && (
+                    <div className="small text-body-secondary mt-1 d-flex align-items-center gap-2">
+                      <CSpinner size="sm" /> Cargando estados…
+                    </div>
+                  )}
+                  {statesError && <div className="invalid-feedback d-block">{statesError}</div>}
+                  {errors.stateId && <div className="invalid-feedback d-block">{errors.stateId}</div>}
+                </CCol>
+                <CCol xs={12} md={4}>
+                  <CFormLabel htmlFor="academy-municipality">Municipio</CFormLabel>
+                  <CFormInput
+                    id="academy-municipality-search"
+                    type="search"
+                    placeholder="Escribe para filtrar"
+                    value={municipalitySearch}
+                    onChange={(event) => setMunicipalitySearch(event.target.value)}
+                    disabled={!formState.stateId || municipalitiesLoading || submitting}
+                  />
+                  <CFormSelect
+                    id="academy-municipality"
+                    className="mt-2"
+                    value={formState.municipalityId}
+                    onChange={handleMunicipalityChange}
+                    invalid={Boolean(errors.municipalityId)}
+                    disabled={!formState.stateId || municipalitiesLoading || submitting}
+                  >
+                    <option value="">Selecciona un municipio</option>
+                    {filteredMunicipalities.map((municipality) => (
+                      <option key={municipality.id} value={municipality.id}>
+                        {municipality.name}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                  {!municipalitiesLoading &&
+                    formState.stateId &&
+                    filteredMunicipalities.length === 0 && (
+                      <div className="small text-body-secondary mt-1">Sin coincidencias</div>
+                    )}
+                  {municipalitiesLoading && (
+                    <div className="small text-body-secondary mt-1 d-flex align-items-center gap-2">
+                      <CSpinner size="sm" /> Cargando municipios…
+                    </div>
+                  )}
+                  {municipalitiesError && (
+                    <div className="invalid-feedback d-block">{municipalitiesError}</div>
+                  )}
+                  {errors.municipalityId && (
+                    <div className="invalid-feedback d-block">{errors.municipalityId}</div>
+                  )}
+                </CCol>
+                <CCol xs={12} md={4}>
+                  <CFormLabel htmlFor="academy-colony">Colonia</CFormLabel>
+                  <CFormInput
+                    id="academy-colony-search"
+                    type="search"
+                    placeholder="Buscar colonia"
+                    value={colonySearch}
+                    onChange={(event) => setColonySearch(event.target.value)}
+                    disabled={!formState.municipalityId || coloniesLoading || submitting}
+                  />
+                  <CFormSelect
+                    id="academy-colony"
+                    className="mt-2"
+                    value={formState.colonyId}
+                    onChange={handleColonyChange}
+                    invalid={Boolean(errors.colonyId)}
+                    disabled={!formState.municipalityId || coloniesLoading || submitting}
+                  >
+                    <option value="">Selecciona una colonia</option>
+                    {filteredColonies.map((colony) => (
+                      <option key={colony.id} value={colony.id}>
+                        {colony.name}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                  {!coloniesLoading &&
+                    formState.municipalityId &&
+                    filteredColonies.length === 0 && (
+                      <div className="small text-body-secondary mt-1">Sin coincidencias</div>
+                    )}
+                  {coloniesLoading && (
+                    <div className="small text-body-secondary mt-1 d-flex align-items-center gap-2">
+                      <CSpinner size="sm" /> Buscando colonias…
+                    </div>
+                  )}
+                  {coloniesError && <div className="invalid-feedback d-block">{coloniesError}</div>}
+                  {errors.colonyId && <div className="invalid-feedback d-block">{errors.colonyId}</div>}
+                </CCol>
+              </CRow>
+            </CCol>
+            <CCol xs={12}>
+              <CFormLabel htmlFor="academy-googlemaps">Enlace de Google Maps</CFormLabel>
+              <CFormTextarea
+                id="academy-googlemaps"
+                value={formState.googlemaps}
+                onChange={handleChange('googlemaps')}
+                rows={3}
+                required
+                invalid={Boolean(errors.googlemaps)}
+                placeholder="https://maps.google.com/..."
+                disabled={submitting}
+              />
+              {errors.googlemaps && (
+                <div className="invalid-feedback d-block">{errors.googlemaps}</div>
+              )}
             </CCol>
             <CCol xs={12} md={6}>
               <CFormLabel htmlFor="academy-logo">Logo (URL)</CFormLabel>
@@ -346,13 +739,15 @@ const AcademyFormModal = ({
             Cancelar
           </CButton>
           <CButton color="primary" type="submit" disabled={submitting}>
-            {submitting && <CSpinner size="sm" className="me-2" />} {isEditMode ? 'Guardar cambios' : 'Crear academia'}
+            {submitting && <CSpinner size="sm" className="me-2" />}{' '}
+            {isEditMode ? 'Guardar cambios' : 'Crear academia'}
           </CButton>
         </CModalFooter>
       </CForm>
     </CModal>
   )
 }
+
 
 const DeleteConfirmationModal = ({ visible, academy, deleting, onClose, onConfirm }) => {
   return (
@@ -432,31 +827,148 @@ const AcademiesManagement = () => {
     return () => window.clearTimeout(timeoutId)
   }, [feedback])
 
-  const cityOptions = useMemo(() => {
-    const uniqueCities = new Set()
+  const stateFilterOptions = useMemo(() => {
+    const map = new Map()
     academies.forEach((academy) => {
-      if (academy.city) {
-        uniqueCities.add(academy.city)
+      const state = academy.colony?.municipality?.state
+      if (!state?.id) {
+        return
+      }
+
+      const key = String(state.id)
+      if (!map.has(key)) {
+        map.set(key, state.name ?? `Estado ${state.id}`)
       }
     })
 
-    return [{ value: '', label: 'Todas las ciudades' }, ...Array.from(uniqueCities).map((city) => ({ value: city, label: city }))]
+    const options = Array.from(map.entries())
+      .sort(([, labelA], [, labelB]) => labelA.localeCompare(labelB, 'es'))
+      .map(([value, label]) => ({ value, label }))
+
+    return [{ value: '', label: 'Todos los estados' }, ...options]
   }, [academies])
+
+  const municipalityFilterOptions = useMemo(() => {
+    const map = new Map()
+    academies.forEach((academy) => {
+      const municipality = academy.colony?.municipality
+      const state = municipality?.state
+      if (!municipality?.id || !state?.id) {
+        return
+      }
+
+      const stateId = String(state.id)
+      if (filters.stateId && stateId !== filters.stateId) {
+        return
+      }
+
+      const key = String(municipality.id)
+      if (!map.has(key)) {
+        map.set(key, {
+          label: municipality.name ?? `Municipio ${municipality.id}`,
+          stateName: state.name ?? `Estado ${state.id}`,
+        })
+      }
+    })
+
+    const options = Array.from(map.entries())
+      .sort(([, a], [, b]) => a.label.localeCompare(b.label, 'es'))
+      .map(([value, data]) => ({
+        value,
+        label: filters.stateId ? data.label : `${data.label} (${data.stateName})`,
+      }))
+
+    return [
+      {
+        value: '',
+        label: filters.stateId ? 'Todos los municipios' : 'Todos los municipios',
+      },
+      ...options,
+    ]
+  }, [academies, filters.stateId])
+
+  const colonyFilterOptions = useMemo(() => {
+    const map = new Map()
+    academies.forEach((academy) => {
+      const colony = academy.colony
+      const municipality = colony?.municipality
+      const state = municipality?.state
+      if (!colony?.id || !municipality?.id || !state?.id) {
+        return
+      }
+
+      const stateId = String(state.id)
+      const municipalityId = String(municipality.id)
+
+      if (filters.stateId && stateId !== filters.stateId) {
+        return
+      }
+
+      if (filters.municipalityId && municipalityId !== filters.municipalityId) {
+        return
+      }
+
+      const key = String(colony.id)
+      if (!map.has(key)) {
+        map.set(key, {
+          label: colony.name ?? `Colonia ${colony.id}`,
+          municipalityName: municipality.name ?? `Municipio ${municipality.id}`,
+        })
+      }
+    })
+
+    const options = Array.from(map.entries())
+      .sort(([, a], [, b]) => a.label.localeCompare(b.label, 'es'))
+      .map(([value, data]) => ({
+        value,
+        label:
+          filters.municipalityId || filters.stateId
+            ? data.label
+            : `${data.label} (${data.municipalityName})`,
+      }))
+
+    return [{ value: '', label: 'Todas las colonias' }, ...options]
+  }, [academies, filters.municipalityId, filters.stateId])
 
   const filteredAcademies = useMemo(() => {
     const normalizedSearch = filters.search.trim().toLowerCase()
 
     return academies.filter((academy) => {
+      const colony = academy.colony ?? null
+      const municipality = colony?.municipality ?? null
+      const state = municipality?.state ?? null
+      const country = state?.country ?? null
+
       if (normalizedSearch) {
-        const haystack = [academy.name, academy.mail, academy.city, academy.contactPhoneNumber]
+        const haystack = [
+          academy.name,
+          academy.mail,
+          academy.contactPhoneNumber,
+          colony?.name,
+          colony?.city,
+          colony?.settlement,
+          colony?.postalCode ? colony.postalCode.toString() : null,
+          municipality?.name,
+          state?.name,
+          country?.name,
+        ]
           .filter(Boolean)
-          .map((value) => value.toLowerCase())
+          .map((value) => value.toString().toLowerCase())
+
         if (!haystack.some((value) => value.includes(normalizedSearch))) {
           return false
         }
       }
 
-      if (filters.city && academy.city !== filters.city) {
+      if (filters.stateId && String(state?.id ?? '') !== filters.stateId) {
+        return false
+      }
+
+      if (filters.municipalityId && String(municipality?.id ?? '') !== filters.municipalityId) {
+        return false
+      }
+
+      if (filters.colonyId && String(colony?.id ?? '') !== filters.colonyId) {
         return false
       }
 
@@ -470,7 +982,7 @@ const AcademiesManagement = () => {
 
       return true
     })
-  }, [academies, filters.city, filters.hasWebsite, filters.search])
+  }, [academies, filters.colonyId, filters.hasWebsite, filters.municipalityId, filters.search, filters.stateId])
 
   const totalPages = Math.max(1, Math.ceil(filteredAcademies.length / filters.limit))
   const currentPage = Math.min(filters.page, totalPages)
@@ -492,11 +1004,24 @@ const AcademiesManagement = () => {
 
   const handleFilterChange = (field) => (event) => {
     const value = event.target.value
-    setFilters((prev) => ({
-      ...prev,
-      [field]: field === 'limit' ? Number(value) : value,
-      page: 1,
-    }))
+    setFilters((prev) => {
+      const next = {
+        ...prev,
+        [field]: field === 'limit' ? Number(value) : value,
+        page: 1,
+      }
+
+      if (field === 'stateId') {
+        next.municipalityId = ''
+        next.colonyId = ''
+      }
+
+      if (field === 'municipalityId') {
+        next.colonyId = ''
+      }
+
+      return next
+    })
   }
 
   const handleSearchChange = (event) => {
@@ -617,20 +1142,52 @@ const AcademiesManagement = () => {
                 </CInputGroupText>
                 <CFormInput
                   id="academy-search"
-                  placeholder="Buscar por nombre, correo, teléfono o ciudad"
+                  placeholder="Buscar por nombre, correo, teléfono o ubicación"
                   value={filters.search}
                   onChange={handleSearchChange}
                 />
               </CInputGroup>
             </CCol>
             <CCol xs={12} md={4}>
-              <CFormLabel htmlFor="academy-city-filter">Ciudad</CFormLabel>
+              <CFormLabel htmlFor="academy-state-filter">Estado</CFormLabel>
               <CFormSelect
-                id="academy-city-filter"
-                value={filters.city}
-                onChange={handleFilterChange('city')}
+                id="academy-state-filter"
+                value={filters.stateId}
+                onChange={handleFilterChange('stateId')}
               >
-                {cityOptions.map((option) => (
+                {stateFilterOptions.map((option) => (
+                  <option key={option.value || 'all'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </CFormSelect>
+            </CCol>
+            <CCol xs={12} md={4}>
+              <CFormLabel htmlFor="academy-municipality-filter">Municipio</CFormLabel>
+              <CFormSelect
+                id="academy-municipality-filter"
+                value={filters.municipalityId}
+                onChange={handleFilterChange('municipalityId')}
+                disabled={municipalityFilterOptions.length <= 1}
+              >
+                {municipalityFilterOptions.map((option) => (
+                  <option key={option.value || 'all'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </CFormSelect>
+            </CCol>
+          </CRow>
+          <CRow className="g-3 mt-1 align-items-end">
+            <CCol xs={12} md={4}>
+              <CFormLabel htmlFor="academy-colony-filter">Colonia</CFormLabel>
+              <CFormSelect
+                id="academy-colony-filter"
+                value={filters.colonyId}
+                onChange={handleFilterChange('colonyId')}
+                disabled={colonyFilterOptions.length <= 1}
+              >
+                {colonyFilterOptions.map((option) => (
                   <option key={option.value || 'all'} value={option.value}>
                     {option.label}
                   </option>
@@ -651,8 +1208,6 @@ const AcademiesManagement = () => {
                 ))}
               </CFormSelect>
             </CCol>
-          </CRow>
-          <CRow className="g-3 mt-1 align-items-end">
             <CCol xs={12} md={4}>
               <CFormLabel htmlFor="academy-limit">Elementos por página</CFormLabel>
               <CFormSelect
@@ -707,7 +1262,21 @@ const AcademiesManagement = () => {
                       <div>{academy.contactPhoneNumber ?? '—'}</div>
                     </CTableDataCell>
                     <CTableDataCell>
-                      <div className="fw-semibold">{academy.city ?? '—'}</div>
+                      <div className="d-flex align-items-center gap-2 fw-semibold">
+                        <CIcon icon={cilLocationPin} className="text-primary" />
+                        <span>{academy.colony?.name ?? '—'}</span>
+                      </div>
+                      <div className="text-body-secondary small">
+                        {[
+                          academy.colony?.municipality?.name,
+                          academy.colony?.municipality?.state?.name,
+                        ]
+                          .filter(Boolean)
+                          .join(', ') || '—'}
+                      </div>
+                      {academy.colony?.postalCode && (
+                        <div className="text-body-secondary small">CP {academy.colony.postalCode}</div>
+                      )}
                       {academy.googlemaps && (
                         <CButton
                           color="link"

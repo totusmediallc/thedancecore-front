@@ -58,9 +58,9 @@ El router protege todo lo que cuelga de `DefaultLayout` mediante `ProtectedRoute
 
 ## Gestión de academias (`#/academias/listado`)
 
-- Vista única para administración de academias. El listado incluye filtros en cliente (búsqueda global, ciudad y disponibilidad de sitio web) y paginación local.
+- Vista única para administración de academias. El listado incluye filtros en cliente (búsqueda global, estado/municipio/colonia y disponibilidad de sitio web) y paginación local.
 - Solo los administradores (`admin`) pueden crear, editar o eliminar; los usuarios con otros roles acceden en modo lectura y reciben un aviso sobre permisos restringidos.
-- El formulario modal valida campos obligatorios (`name`, `contactPhoneNumber`, `mail`, `city`, `googlemaps`) y URLs opcionales (`web`, `logo`) antes de enviar al backend (`/academies`).
+- El formulario modal valida campos obligatorios (`name`, `contactPhoneNumber`, `mail`, `colonyId`, `googlemaps`) y URLs opcionales (`web`, `logo`). El flujo de ubicación usa selectores dependientes alimentados por `/locations/states`, `/locations/municipalities` y `/locations/colonies`, permitiendo filtrar escribiendo mientras se buscan municipios o colonias.
 - Las acciones sensibles (guardar/eliminar) muestran retroalimentación contextual y una confirmación dedicada antes de borrar registros (hard delete en backend).
 
 ## Recursos adicionales
