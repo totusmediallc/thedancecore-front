@@ -45,6 +45,7 @@ El router protege todo lo que cuelga de `DefaultLayout` mediante `ProtectedRoute
 ## Próximos pasos sugeridos
 
 - Mantener y evolucionar el CRUD de usuarios implementado en `#/configuraciones/usuarios`, incorporando mejoras de experiencia y seguridad según feedback del negocio.
+- Consolidar la gestión de academias desde una única vista que permita listar, crear, editar y eliminar con controles de rol y formularios validados.
 - Añadir guardas de rol (`admin`/`client`) en el frontend cuando existan pantallas sensibles adicionales.
 - Completar módulos del dashboard reemplazando datos de ejemplo por datos reales del backend.
 
@@ -54,6 +55,13 @@ El router protege todo lo que cuelga de `DefaultLayout` mediante `ProtectedRoute
 - Se puede acceder directamente desde la URL `http://localhost:3000/#/configuraciones/usuarios` o a través del ítem **Configuraciones → Usuarios del sistema** en el sidebar.
 - Incluye buscador, filtros por rol/estado, paginación y acciones para crear, editar o desactivar usuarios. Las modales controlan automáticamente permisos sensibles (por ejemplo, impedir desactivar al usuario autenticado).
 - Tras ejecutar una acción, la vista refresca los datos y muestra feedback contextual (éxitos o errores reportados por la API).
+
+## Gestión de academias (`#/academias/listado`)
+
+- Vista única para administración de academias. El listado incluye filtros en cliente (búsqueda global, ciudad y disponibilidad de sitio web) y paginación local.
+- Solo los administradores (`admin`) pueden crear, editar o eliminar; los usuarios con otros roles acceden en modo lectura y reciben un aviso sobre permisos restringidos.
+- El formulario modal valida campos obligatorios (`name`, `contactPhoneNumber`, `mail`, `city`, `googlemaps`) y URLs opcionales (`web`, `logo`) antes de enviar al backend (`/academies`).
+- Las acciones sensibles (guardar/eliminar) muestran retroalimentación contextual y una confirmación dedicada antes de borrar registros (hard delete en backend).
 
 ## Recursos adicionales
 

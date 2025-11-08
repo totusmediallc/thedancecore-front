@@ -6,7 +6,6 @@ const Typography = React.lazy(() => import('./views/theme/typography/Typography'
 
 // Academias
 const AcademiasListado = React.lazy(() => import('./views/academias/Listado'))
-const AcademiasAgregar = React.lazy(() => import('./views/academias/Agregar'))
 const AcademiasCompetidores = React.lazy(() => import('./views/academias/Competidores'))
 const AcademiasGeneros = React.lazy(() => import('./views/academias/Generos'))
 const AcademiasCategorias = React.lazy(() => import('./views/academias/Categorias'))
@@ -71,7 +70,7 @@ const routes = [
   // Academias
   { path: '/academias', name: 'Academias', element: AcademiasListado, exact: true },
   { path: '/academias/listado', name: 'Listado', element: AcademiasListado },
-  { path: '/academias/agregar', name: 'Agregar academia', element: AcademiasAgregar },
+  { path: '/academias/agregar', name: 'Agregar academia', element: AcademiasListado },
   { path: '/academias/competidores', name: 'Competidores', element: AcademiasCompetidores },
   { path: '/academias/generos', name: 'Géneros', element: AcademiasGeneros },
   { path: '/academias/categorias', name: 'Categorías', element: AcademiasCategorias },
