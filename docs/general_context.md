@@ -48,6 +48,13 @@ El router protege todo lo que cuelga de `DefaultLayout` mediante `ProtectedRoute
 - Añadir guardas de rol (`admin`/`client`) en el frontend cuando existan pantallas sensibles adicionales.
 - Completar módulos del dashboard reemplazando datos de ejemplo por datos reales del backend.
 
+## Administración de usuarios (`#/configuraciones/usuarios`)
+
+- Disponible únicamente para cuentas con rol `admin`. Los usuarios con otros roles verán un mensaje de acceso restringido.
+- Se puede acceder directamente desde la URL `http://localhost:3000/#/configuraciones/usuarios` o a través del ítem **Configuraciones → Usuarios del sistema** en el sidebar.
+- Incluye buscador, filtros por rol/estado, paginación y acciones para crear, editar o desactivar usuarios. Las modales controlan automáticamente permisos sensibles (por ejemplo, impedir desactivar al usuario autenticado).
+- Tras ejecutar una acción, la vista refresca los datos y muestra feedback contextual (éxitos o errores reportados por la API).
+
 ## Recursos adicionales
 
 - **Template base**: [CoreUI React Dashboard Template](https://coreui.io/react/)

@@ -77,7 +77,7 @@ const routes = [
   { path: '/academias/categorias', name: 'Categorías', element: AcademiasCategorias },
   // Configuraciones
   { path: '/configuraciones', name: 'Configuraciones', element: ConfigUsuarios, exact: true },
-  { path: '/configuraciones/usuarios', name: 'Usuarios', element: ConfigUsuarios },
+  { path: '/configuraciones/usuarios', name: 'Usuarios', element: UsersManagement },
   { path: '/configuraciones/opciones', name: 'Opciones', element: ConfigOpciones },
   { path: '/configuraciones/perfil', name: 'Perfil', element: ConfigPerfil },
   { path: '/theme', name: 'Theme', element: Colors, exact: true },
@@ -123,11 +123,6 @@ const routes = [
   { path: '/notifications/modals', name: 'Modals', element: Modals },
   { path: '/notifications/toasts', name: 'Toasts', element: Toasts },
   { path: '/widgets', name: 'Widgets', element: Widgets },
-  {
-    path: '/configuraciones/usuarios',
-    name: 'Administración de usuarios',
-    element: UsersManagement,
-  },
 ]
 
 export default routes
