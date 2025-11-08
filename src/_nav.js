@@ -40,13 +40,8 @@ const _nav = [
     items: [
       {
         component: CNavItem,
-        name: 'Listado',
+        name: 'Gestión',
         to: '/academias/listado',
-      },
-      {
-        component: CNavItem,
-        name: 'Agregar academia',
-        to: '/academias/agregar',
       },
       {
         component: CNavItem,
