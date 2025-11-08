@@ -44,8 +44,8 @@ El router protege todo lo que cuelga de `DefaultLayout` mediante `ProtectedRoute
 
 ## Próximos pasos sugeridos
 
-- Implementar CRUD de usuarios usando los endpoints `/api/users` (pendiente según la planificación).
-- Añadir guardas de rol (`admin`/`client`) en el frontend cuando existan pantallas sensibles.
+- Mantener y evolucionar el CRUD de usuarios implementado en `#/configuraciones/usuarios`, incorporando mejoras de experiencia y seguridad según feedback del negocio.
+- Añadir guardas de rol (`admin`/`client`) en el frontend cuando existan pantallas sensibles adicionales.
 - Completar módulos del dashboard reemplazando datos de ejemplo por datos reales del backend.
 
 ## Recursos adicionales
