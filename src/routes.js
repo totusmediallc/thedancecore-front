@@ -4,6 +4,18 @@ const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const Colors = React.lazy(() => import('./views/theme/colors/Colors'))
 const Typography = React.lazy(() => import('./views/theme/typography/Typography'))
 
+// Academias
+const AcademiasListado = React.lazy(() => import('./views/academias/Listado'))
+const AcademiasAgregar = React.lazy(() => import('./views/academias/Agregar'))
+const AcademiasCompetidores = React.lazy(() => import('./views/academias/Competidores'))
+const AcademiasGeneros = React.lazy(() => import('./views/academias/Generos'))
+const AcademiasCategorias = React.lazy(() => import('./views/academias/Categorias'))
+
+// Configuraciones
+const ConfigUsuarios = React.lazy(() => import('./views/configuraciones/Usuarios'))
+const ConfigOpciones = React.lazy(() => import('./views/configuraciones/Opciones'))
+const ConfigPerfil = React.lazy(() => import('./views/configuraciones/Perfil'))
+
 // Base
 const Accordion = React.lazy(() => import('./views/base/accordion/Accordion'))
 const Breadcrumbs = React.lazy(() => import('./views/base/breadcrumbs/Breadcrumbs'))
@@ -54,6 +66,18 @@ const Widgets = React.lazy(() => import('./views/widgets/Widgets'))
 const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
+  // Academias
+  { path: '/academias', name: 'Academias', element: AcademiasListado, exact: true },
+  { path: '/academias/listado', name: 'Listado', element: AcademiasListado },
+  { path: '/academias/agregar', name: 'Agregar academia', element: AcademiasAgregar },
+  { path: '/academias/competidores', name: 'Competidores', element: AcademiasCompetidores },
+  { path: '/academias/generos', name: 'Géneros', element: AcademiasGeneros },
+  { path: '/academias/categorias', name: 'Categorías', element: AcademiasCategorias },
+  // Configuraciones
+  { path: '/configuraciones', name: 'Configuraciones', element: ConfigUsuarios, exact: true },
+  { path: '/configuraciones/usuarios', name: 'Usuarios', element: ConfigUsuarios },
+  { path: '/configuraciones/opciones', name: 'Opciones', element: ConfigOpciones },
+  { path: '/configuraciones/perfil', name: 'Perfil', element: ConfigPerfil },
   { path: '/theme', name: 'Theme', element: Colors, exact: true },
   { path: '/theme/colors', name: 'Colors', element: Colors },
   { path: '/theme/typography', name: 'Typography', element: Typography },

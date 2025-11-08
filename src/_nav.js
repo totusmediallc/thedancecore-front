@@ -18,6 +18,10 @@ import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
 
 const _nav = [
   {
+    component: CNavTitle,
+    name: 'TheDanceCore Menu',
+  },
+  {
     component: CNavItem,
     name: 'Dashboard',
     to: '/dashboard',
@@ -26,6 +30,62 @@ const _nav = [
       color: 'info',
       text: 'NEW',
     },
+  },
+  {
+    component: CNavGroup,
+    name: 'Academias',
+    to: '/academias',
+    icon: <CIcon icon={cilPuzzle} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Listado',
+        to: '/academias/listado',
+      },
+      {
+        component: CNavItem,
+        name: 'Agregar academia',
+        to: '/academias/agregar',
+      },
+      {
+        component: CNavItem,
+        name: 'Competidores',
+        to: '/academias/competidores',
+      },
+      {
+        component: CNavItem,
+        name: 'Géneros',
+        to: '/academias/generos',
+      },
+      {
+        component: CNavItem,
+        name: 'Categorías',
+        to: '/academias/categorias',
+      },
+    ],
+  },
+  {
+    component: CNavGroup,
+    name: 'Configuraciones',
+    to: '/configuraciones',
+    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Usuarios',
+        to: '/configuraciones/usuarios',
+      },
+      {
+        component: CNavItem,
+        name: 'Opciones',
+        to: '/configuraciones/opciones',
+      },
+      {
+        component: CNavItem,
+        name: 'Perfil',
+        to: '/configuraciones/perfil',
+      },
+    ],
   },
   {
     component: CNavTitle,
