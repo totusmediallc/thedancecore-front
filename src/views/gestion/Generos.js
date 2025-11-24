@@ -3,7 +3,7 @@ import { CCard, CCardBody, CCardHeader } from '@coreui/react'
 
 const Generos = () => (
   <CCard>
-    <CCardHeader>Academias - Géneros</CCardHeader>
+    <CCardHeader>Gestión - Géneros</CCardHeader>
     <CCardBody>Hola mundo: Catálogo de géneros</CCardBody>
   </CCard>
 )

@@ -3,7 +3,7 @@ import { CCard, CCardBody, CCardHeader } from '@coreui/react'
 
 const Competidores = () => (
   <CCard>
-    <CCardHeader>Academias - Competidores</CCardHeader>
+    <CCardHeader>Gestión - Competidores</CCardHeader>
     <CCardBody>Hola mundo: Gestión de competidores</CCardBody>
   </CCard>
 )

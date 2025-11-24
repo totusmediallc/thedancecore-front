@@ -34,29 +34,29 @@ const _nav = [
   },
   {
     component: CNavGroup,
-    name: 'Academias',
-    to: '/academias',
+    name: 'Gestión',
+    to: '/gestion',
     icon: <CIcon icon={cilPuzzle} customClassName="nav-icon" />,
     items: [
       {
         component: CNavItem,
-        name: 'Gestión',
-        to: '/academias/listado',
+        name: 'Academias',
+        to: '/gestion/academias',
       },
       {
         component: CNavItem,
         name: 'Competidores',
-        to: '/academias/competidores',
+        to: '/gestion/competidores',
       },
       {
         component: CNavItem,
         name: 'Géneros',
-        to: '/academias/generos',
+        to: '/gestion/generos',
       },
       {
         component: CNavItem,
         name: 'Categorías',
-        to: '/academias/categorias',
+        to: '/gestion/categorias',
       },
     ],
   },

@@ -4,11 +4,11 @@ const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const Colors = React.lazy(() => import('./views/theme/colors/Colors'))
 const Typography = React.lazy(() => import('./views/theme/typography/Typography'))
 
-// Academias
-const AcademiasListado = React.lazy(() => import('./views/academias/Listado'))
-const AcademiasCompetidores = React.lazy(() => import('./views/academias/Competidores'))
-const AcademiasGeneros = React.lazy(() => import('./views/academias/Generos'))
-const AcademiasCategorias = React.lazy(() => import('./views/academias/Categorias'))
+// Gestión (renombrado desde "academias")
+const GestionAcademias = React.lazy(() => import('./views/gestion/Academias'))
+const GestionCompetidores = React.lazy(() => import('./views/gestion/Competidores'))
+const GestionGeneros = React.lazy(() => import('./views/gestion/Generos'))
+const GestionCategorias = React.lazy(() => import('./views/gestion/Categorias'))
 
 // Configuraciones
 const ConfigUsuarios = React.lazy(() => import('./views/configuraciones/Usuarios'))
@@ -67,13 +67,12 @@ const UsersManagement = React.lazy(() => import('./views/configuraciones/usuario
 const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
-  // Academias
-  { path: '/academias', name: 'Academias', element: AcademiasListado, exact: true },
-  { path: '/academias/listado', name: 'Listado', element: AcademiasListado },
-  { path: '/academias/agregar', name: 'Agregar academia', element: AcademiasListado },
-  { path: '/academias/competidores', name: 'Competidores', element: AcademiasCompetidores },
-  { path: '/academias/generos', name: 'Géneros', element: AcademiasGeneros },
-  { path: '/academias/categorias', name: 'Categorías', element: AcademiasCategorias },
+  // Gestión
+  { path: '/gestion', name: 'Gestión', element: GestionAcademias, exact: true },
+  { path: '/gestion/academias', name: 'Academias', element: GestionAcademias },
+  { path: '/gestion/competidores', name: 'Competidores', element: GestionCompetidores },
+  { path: '/gestion/generos', name: 'Géneros', element: GestionGeneros },
+  { path: '/gestion/categorias', name: 'Categorías', element: GestionCategorias },
   // Configuraciones
   { path: '/configuraciones', name: 'Configuraciones', element: ConfigUsuarios, exact: true },
   { path: '/configuraciones/usuarios', name: 'Usuarios', element: UsersManagement },
