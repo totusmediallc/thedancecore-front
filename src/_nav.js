@@ -17,72 +17,9 @@ import {
 } from '@coreui/icons'
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
 
-const _nav = [
-  {
-    component: CNavTitle,
-    name: 'TheDanceCore Menu',
-  },
-  {
-    component: CNavItem,
-    name: 'Dashboard',
-    to: '/dashboard',
-    icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
-    badge: {
-      color: 'info',
-      text: 'NEW',
-    },
-  },
-  {
-    component: CNavGroup,
-    name: 'Gestión',
-    to: '/gestion',
-    icon: <CIcon icon={cilPuzzle} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'Academias',
-        to: '/gestion/academias',
-      },
-      {
-        component: CNavItem,
-        name: 'Competidores',
-        to: '/gestion/competidores',
-      },
-      {
-        component: CNavItem,
-        name: 'Géneros',
-        to: '/gestion/generos',
-      },
-      {
-        component: CNavItem,
-        name: 'Categorías',
-        to: '/gestion/categorias',
-      },
-    ],
-  },
-  {
-    component: CNavGroup,
-    name: 'Configuraciones',
-    to: '/configuraciones',
-    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'Usuarios',
-        to: '/configuraciones/usuarios',
-      },
-      {
-        component: CNavItem,
-        name: 'Opciones',
-        to: '/configuraciones/opciones',
-      },
-      {
-        component: CNavItem,
-        name: 'Perfil',
-        to: '/configuraciones/perfil',
-      },
-    ],
-  },
+const SHOW_TEMPLATE_SECTIONS = false
+
+const templateNavItems = [
   {
     component: CNavTitle,
     name: 'Theme',
@@ -554,6 +491,70 @@ const _nav = [
     href: 'https://coreui.io/react/docs/templates/installation/',
     icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
   },
+]
+
+const _nav = [
+  {
+    component: CNavTitle,
+    name: 'TheDanceCore Menu',
+  },
+  {
+    component: CNavItem,
+    name: 'Dashboard',
+    to: '/dashboard',
+    icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
+    badge: {
+      color: 'info',
+      text: 'NEW',
+    },
+  },
+  {
+    component: CNavGroup,
+    name: 'Gestión',
+    to: '/gestion',
+    icon: <CIcon icon={cilPuzzle} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Academias',
+        to: '/gestion/academias',
+      },
+      {
+        component: CNavItem,
+        name: 'Géneros',
+        to: '/gestion/generos',
+      },
+      {
+        component: CNavItem,
+        name: 'Categorías',
+        to: '/gestion/categorias',
+      },
+    ],
+  },
+  {
+    component: CNavGroup,
+    name: 'Configuraciones',
+    to: '/configuraciones',
+    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Usuarios',
+        to: '/configuraciones/usuarios',
+      },
+      {
+        component: CNavItem,
+        name: 'Opciones',
+        to: '/configuraciones/opciones',
+      },
+      {
+        component: CNavItem,
+        name: 'Perfil',
+        to: '/configuraciones/perfil',
+      },
+    ],
+  },
+  ...(SHOW_TEMPLATE_SECTIONS ? templateNavItems : []),
 ]
 
 export default _nav
