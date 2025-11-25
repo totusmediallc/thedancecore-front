@@ -54,3 +54,17 @@ Este proyecto está basado en CoreUI Free React Admin Template (MIT).
 Copyright © 2025 creativeLabs Łukasz Holeczek.
 
 Código bajo licencia MIT. Revisa `LICENSE` para más detalles.
+
+### Gestión de academias y competidores
+
+La vista `Academias` ahora incluye la gestión de competidores asociados (bailarines) sin salir de la pantalla:
+
+- En el listado de academias, cada fila muestra un botón "Ver competidores".
+- Al hacer clic se abre un modal con el CRUD completo de competidores pertenecientes a esa academia.
+- Filtros disponibles: búsqueda por nombre, correo, teléfono o CURP; paginación y tamaño de página.
+- Validaciones: CURP única dentro de la academia, formato de correo y fecha de nacimiento requerida.
+- Roles:
+	- Administrador: puede crear, editar y eliminar competidores.
+	- Cliente/usuario no admin: solo consulta.
+
+Esto se implementa en el archivo `src/views/gestion/Academias.js` reutilizando estilos y patrones de la gestión de academias.

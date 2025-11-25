@@ -8,12 +8,15 @@ import {
   cilGlobeAlt,
   cilList,
   cilMap,
+  cilPeople,
   cilPencil,
   cilPlus,
   cilReload,
   cilTrash,
   cilWarning,
   cilLocationPin,
+  cilUser,
+  cilUserFollow,
 } from '@coreui/icons'
 import {
   CAlert,
@@ -56,6 +59,18 @@ import {
   listAcademies,
   updateAcademy,
 } from '../../services/academiesApi'
+import {
+  listDancers,
+  createDancer,
+  updateDancer,
+  deleteDancer,
+} from '../../services/dancersApi'
+import {
+  listCoaches,
+  createCoach,
+  updateCoach,
+  deleteCoach,
+} from '../../services/coachesApi'
 import { listColonies, listMunicipalities, listStates } from '../../services/locationsApi'
 
 const DEFAULT_FILTERS = {
@@ -75,6 +90,24 @@ const HAS_WEBSITE_OPTIONS = [
 ]
 
 const LIMIT_OPTIONS = [10, 20, 50]
+
+// Filtros para competidores
+const DANCER_DEFAULT_FILTERS = {
+  search: '',
+  page: 1,
+  limit: 10,
+}
+
+const DANCER_LIMIT_OPTIONS = LIMIT_OPTIONS
+
+// Filtros para coaches
+const COACH_DEFAULT_FILTERS = {
+  search: '',
+  page: 1,
+  limit: 10,
+}
+
+const COACH_LIMIT_OPTIONS = LIMIT_OPTIONS
 
 const getErrorMessage = (error, fallback = 'Ocurrió un error inesperado') => {
   if (!error) {
@@ -531,7 +564,7 @@ const AcademyFormModal = ({
   }
 
   return (
-    <CModal visible={visible} onClose={onClose} alignment="center" size="lg" backdrop="static">
+    <CModal visible={visible} onClose={onClose} alignment="center" size="xl" backdrop="static">
       <CModalHeader closeButton>
         <CModalTitle>{isEditMode ? 'Editar academia' : 'Registrar nueva academia'}</CModalTitle>
       </CModalHeader>
@@ -777,6 +810,1059 @@ const DeleteConfirmationModal = ({ visible, academy, deleting, onClose, onConfir
   )
 }
 
+// Modal para crear / editar competidor
+const DancerFormModal = ({
+  mode,
+  visible,
+  submitting,
+  onClose,
+  onSubmit,
+  dancer,
+  academy,
+  existingCurps,
+  isAdmin,
+}) => {
+  const isEditMode = mode === 'edit'
+
+  const baseState = useMemo(
+    () =>
+      isEditMode && dancer
+        ? {
+            name: dancer.name ?? '',
+            email: dancer.email ?? '',
+            phone: dancer.phone ?? '',
+            birthDate: dancer.birthDate ? dancer.birthDate.substring(0, 10) : '',
+            curp: dancer.curp ?? '',
+          }
+        : {
+            name: '',
+            email: '',
+            phone: '',
+            birthDate: '',
+            curp: '',
+          },
+    [isEditMode, dancer],
+  )
+
+  const [formState, setFormState] = useState(baseState)
+  const [errors, setErrors] = useState({})
+
+  useEffect(() => {
+    if (visible) {
+      setFormState(baseState)
+      setErrors({})
+    }
+  }, [visible, baseState])
+
+  const handleChange = (field) => (event) => {
+    const value = event.target.value
+    setFormState((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const validate = useCallback(() => {
+    const validationErrors = {}
+
+    if (!formState.name.trim()) {
+      validationErrors.name = 'El nombre es obligatorio'
+    }
+
+    if (!formState.birthDate) {
+      validationErrors.birthDate = 'La fecha de nacimiento es obligatoria'
+    }
+
+    if (!formState.curp.trim()) {
+      validationErrors.curp = 'La CURP es obligatoria'
+    } else {
+      const normalizedCurp = formState.curp.trim().toLowerCase()
+      // Validación básica de formato (alfa-numérico, longitud típica 18)
+      if (!/^[a-zA-Z0-9]{10,18}$/.test(normalizedCurp)) {
+        validationErrors.curp = 'CURP inválida (usa caracteres alfanuméricos)'
+      } else {
+        const duplicate = existingCurps.some(
+          (c) => c === normalizedCurp && (!isEditMode || normalizedCurp !== dancer.curp?.toLowerCase()),
+        )
+        if (duplicate) {
+          validationErrors.curp = 'Ya existe un competidor con esta CURP en la academia'
+        }
+      }
+    }
+
+    if (formState.email.trim()) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formState.email.trim())) {
+        validationErrors.email = 'Correo inválido'
+      }
+    }
+
+    setErrors(validationErrors)
+    return Object.keys(validationErrors).length === 0
+  }, [formState, existingCurps, isEditMode, dancer])
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    if (!validate()) {
+      return
+    }
+    const payload = {
+      name: formState.name.trim(),
+      // Backend confirmado: usar solo birthDate
+      birthDate: formState.birthDate, // YYYY-MM-DD
+      curp: formState.curp.trim(),
+      // Enviar siempre academyIds como strings para cumplir con el contrato del backend
+      academyIds: [String(academy.id)],
+    }
+    if (formState.email.trim()) {
+      payload.email = formState.email.trim()
+    }
+    if (formState.phone.trim()) {
+      payload.phone = formState.phone.trim()
+    }
+    onSubmit(payload)
+  }
+
+  return (
+    <CModal visible={visible} onClose={onClose} alignment="center" size="lg" backdrop="static">
+      <CModalHeader closeButton>
+        <CModalTitle>
+          {isEditMode ? 'Editar competidor' : 'Registrar nuevo competidor'} · {academy?.name}
+        </CModalTitle>
+      </CModalHeader>
+      <CForm onSubmit={handleSubmit} noValidate>
+        <CModalBody className="py-4">
+          {!isAdmin && (
+            <CAlert color="info" className="mb-3">
+              Solo administradores pueden crear o editar competidores.
+            </CAlert>
+          )}
+          <CRow className="g-3">
+            <CCol xs={12} md={6}>
+              <CFormLabel htmlFor="dancer-name">Nombre</CFormLabel>
+              <CFormInput
+                id="dancer-name"
+                value={formState.name}
+                onChange={handleChange('name')}
+                required
+                invalid={Boolean(errors.name)}
+                disabled={submitting || !isAdmin}
+                autoFocus
+              />
+              {errors.name && <div className="invalid-feedback d-block">{errors.name}</div>}
+            </CCol>
+            <CCol xs={12} md={6}>
+              <CFormLabel htmlFor="dancer-curp">CURP</CFormLabel>
+              <CFormInput
+                id="dancer-curp"
+                value={formState.curp}
+                onChange={handleChange('curp')}
+                required
+                invalid={Boolean(errors.curp)}
+                disabled={submitting || !isAdmin}
+                placeholder="Identificador único"
+              />
+              {errors.curp && <div className="invalid-feedback d-block">{errors.curp}</div>}
+            </CCol>
+            <CCol xs={12} md={6}>
+              <CFormLabel htmlFor="dancer-birth">Fecha de nacimiento</CFormLabel>
+              <CFormInput
+                id="dancer-birth"
+                type="date"
+                value={formState.birthDate}
+                onChange={handleChange('birthDate')}
+                required
+                invalid={Boolean(errors.birthDate)}
+                disabled={submitting || !isAdmin}
+              />
+              {errors.birthDate && <div className="invalid-feedback d-block">{errors.birthDate}</div>}
+            </CCol>
+            <CCol xs={12} md={6}>
+              <CFormLabel htmlFor="dancer-email">Correo electrónico</CFormLabel>
+              <CFormInput
+                id="dancer-email"
+                type="email"
+                value={formState.email}
+                onChange={handleChange('email')}
+                invalid={Boolean(errors.email)}
+                disabled={submitting || !isAdmin}
+                placeholder="Opcional"
+              />
+              {errors.email && <div className="invalid-feedback d-block">{errors.email}</div>}
+            </CCol>
+            <CCol xs={12} md={6}>
+              <CFormLabel htmlFor="dancer-phone">Teléfono</CFormLabel>
+              <CFormInput
+                id="dancer-phone"
+                value={formState.phone}
+                onChange={handleChange('phone')}
+                invalid={Boolean(errors.phone)}
+                disabled={submitting || !isAdmin}
+                placeholder="Opcional"
+              />
+              {errors.phone && <div className="invalid-feedback d-block">{errors.phone}</div>}
+            </CCol>
+          </CRow>
+        </CModalBody>
+        <CModalFooter className="bg-body-tertiary justify-content-between">
+          <CButton color="secondary" variant="ghost" onClick={onClose} disabled={submitting}>
+            Cancelar
+          </CButton>
+          {isAdmin && (
+            <CButton color="primary" type="submit" disabled={submitting}>
+              {submitting && <CSpinner size="sm" className="me-2" />}{' '}
+              {isEditMode ? 'Guardar cambios' : 'Crear competidor'}
+            </CButton>
+          )}
+        </CModalFooter>
+      </CForm>
+    </CModal>
+  )
+}
+
+const DancerDeleteModal = ({ visible, dancer, deleting, onClose, onConfirm }) => (
+  <CModal visible={visible} onClose={onClose} alignment="center" backdrop="static">
+    <CModalHeader closeButton>
+      <CModalTitle>Eliminar competidor</CModalTitle>
+    </CModalHeader>
+    <CModalBody>
+      <p className="mb-3">
+        Estás a punto de eliminar al competidor <strong>{dancer?.name}</strong>. Esta acción es permanente.
+      </p>
+      <CAlert color="warning" className="d-flex align-items-center" variant="solid">
+        <CIcon icon={cilWarning} className="me-2" /> Confirma solo si estás seguro.
+      </CAlert>
+    </CModalBody>
+    <CModalFooter className="bg-body-tertiary justify-content-between">
+      <CButton color="secondary" variant="ghost" onClick={onClose} disabled={deleting}>
+        Cancelar
+      </CButton>
+      <CButton color="danger" onClick={onConfirm} disabled={deleting}>
+        {deleting && <CSpinner size="sm" className="me-2" />} Eliminar definitivamente
+      </CButton>
+    </CModalFooter>
+  </CModal>
+)
+
+const DancersModal = ({
+  visible,
+  academy,
+  onClose,
+  isAdmin,
+}) => {
+  const [dancers, setDancers] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [feedback, setFeedback] = useState(null)
+  const [filters, setFilters] = useState(DANCER_DEFAULT_FILTERS)
+
+  const [formState, setFormState] = useState({ visible: false, mode: 'create', dancer: null })
+  const [formSubmitting, setFormSubmitting] = useState(false)
+  const [deleteState, setDeleteState] = useState({ visible: false, dancer: null })
+  const [deleting, setDeleting] = useState(false)
+
+  const loadDancers = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await listDancers()
+      setDancers(Array.isArray(response) ? response : [])
+    } catch (requestError) {
+      console.error('Unable to load dancers', requestError)
+      setError(getErrorMessage(requestError, 'No se pudieron cargar los competidores'))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (visible && academy?.id) {
+      loadDancers()
+      setFilters(DANCER_DEFAULT_FILTERS)
+    }
+  }, [visible, academy, loadDancers])
+
+  useEffect(() => {
+    if (!feedback) {
+      return undefined
+    }
+    const timeoutId = window.setTimeout(() => setFeedback(null), 3500)
+    return () => window.clearTimeout(timeoutId)
+  }, [feedback])
+
+  const filteredDancers = useMemo(() => {
+    // Si el modal no tiene academia asociada (cerrado o reset), no filtramos nada
+    if (!academy?.id) {
+      return []
+    }
+    const normalized = filters.search.trim().toLowerCase()
+    return dancers.filter((d) => {
+      const belongs = Array.isArray(d.academies) && d.academies.some((a) => a?.id && String(a.id) === String(academy.id))
+      if (!belongs) {
+        return false
+      }
+      if (!normalized) {
+        return true
+      }
+      const haystack = [d.name, d.email, d.phone, d.curp]
+        .filter(Boolean)
+        .map((v) => v.toString().toLowerCase())
+      return haystack.some((v) => v.includes(normalized))
+    })
+  }, [dancers, filters.search, academy])
+
+  const totalPages = Math.max(1, Math.ceil(filteredDancers.length / filters.limit))
+  const currentPage = Math.min(filters.page, totalPages)
+  const paginatedDancers = useMemo(() => {
+    const start = (currentPage - 1) * filters.limit
+    const end = start + filters.limit
+    return filteredDancers.slice(start, end)
+  }, [filteredDancers, currentPage, filters.limit])
+
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, page: Math.min(prev.page, totalPages) }))
+  }, [totalPages])
+
+  const handleSearchChange = (event) => {
+    const value = event.target.value
+    setFilters((prev) => ({ ...prev, search: value, page: 1 }))
+  }
+  const handleLimitChange = (event) => {
+    const value = Number(event.target.value)
+    setFilters((prev) => ({ ...prev, limit: value, page: 1 }))
+  }
+  const handlePageChange = (page) => setFilters((prev) => ({ ...prev, page }))
+
+  const openCreate = () => setFormState({ visible: true, mode: 'create', dancer: null })
+  const openEdit = (dancer) => setFormState({ visible: true, mode: 'edit', dancer })
+  const closeForm = () => {
+    if (formSubmitting) return
+    setFormState({ visible: false, mode: 'create', dancer: null })
+  }
+  const openDelete = (dancer) => setDeleteState({ visible: true, dancer })
+  const closeDelete = () => {
+    if (deleting) return
+    setDeleteState({ visible: false, dancer: null })
+  }
+
+  const submitForm = async (payload) => {
+    setFormSubmitting(true)
+    setFeedback(null)
+    try {
+      // Diagnóstico: log de payload enviado
+      // eslint-disable-next-line no-console
+      console.log('[dancer submit payload]', payload)
+      if (formState.mode === 'edit' && formState.dancer) {
+        await updateDancer(formState.dancer.id, payload)
+        setFeedback({ type: 'success', message: 'Competidor actualizado correctamente' })
+      } else {
+        await createDancer(payload)
+        setFeedback({ type: 'success', message: 'Competidor creado correctamente' })
+      }
+      setFormState({ visible: false, mode: 'create', dancer: null })
+      await loadDancers()
+    } catch (requestError) {
+      console.error('Dancer submit failed', requestError)
+      setFeedback({ type: 'danger', message: getErrorMessage(requestError, 'No se pudo guardar el competidor') })
+    } finally {
+      setFormSubmitting(false)
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteState.dancer) return
+    setDeleting(true)
+    setFeedback(null)
+    try {
+      await deleteDancer(deleteState.dancer.id)
+      setFeedback({ type: 'success', message: 'Competidor eliminado correctamente' })
+      setDeleteState({ visible: false, dancer: null })
+      await loadDancers()
+    } catch (requestError) {
+      console.error('Dancer delete failed', requestError)
+      setFeedback({ type: 'danger', message: getErrorMessage(requestError, 'No se pudo eliminar el competidor') })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const existingCurps = useMemo(
+    () =>
+      filteredDancers.map((d) => d.curp?.toLowerCase()).filter(Boolean),
+    [filteredDancers],
+  )
+
+  // Evitar mantener modal montado cuando no es visible para reducir cálculos y posibles estados inconsistentes
+  if (!visible) {
+    return null
+  }
+
+  return (
+    <CModal visible={visible} onClose={onClose} alignment="center" size="xl" backdrop="static">
+      <CModalHeader closeButton>
+        <CModalTitle>
+          Competidores de: {academy?.name}
+        </CModalTitle>
+      </CModalHeader>
+      <CModalBody className="py-4">
+        {feedback && (
+          <CAlert color={feedback.type} className="mb-4" dismissible onClose={() => setFeedback(null)}>
+            {feedback.message}
+          </CAlert>
+        )}
+        {error && <CAlert color="danger" className="mb-4">{error}</CAlert>}
+        <CRow className="g-3 mb-3">
+          <CCol xs={12} md={6}>
+            <CFormLabel htmlFor="dancers-search">Buscar</CFormLabel>
+            <CInputGroup>
+              <CInputGroupText>
+                <CIcon icon={cilList} />
+              </CInputGroupText>
+              <CFormInput
+                id="dancers-search"
+                placeholder="Buscar por nombre, correo, teléfono o CURP"
+                value={filters.search}
+                onChange={handleSearchChange}
+                disabled={loading}
+              />
+            </CInputGroup>
+          </CCol>
+          <CCol xs={12} md={3}>
+            <CFormLabel htmlFor="dancers-limit">Elementos por página</CFormLabel>
+            <CFormSelect
+              id="dancers-limit"
+              value={filters.limit}
+              onChange={handleLimitChange}
+              disabled={loading}
+            >
+              {DANCER_LIMIT_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </CFormSelect>
+          </CCol>
+          <CCol xs={12} md={3} className="d-flex align-items-end">
+            {isAdmin && (
+              <CButton color="primary" className="w-100" onClick={openCreate} disabled={loading}>
+                <CIcon icon={cilPlus} className="me-2" /> Nuevo competidor
+              </CButton>
+            )}
+          </CCol>
+        </CRow>
+        {loading ? (
+          <div className="d-flex justify-content-center py-5">
+            <CSpinner color="primary" />
+          </div>
+        ) : (
+          <React.Fragment>
+            <CTable responsive="md" hover align="middle" className="mb-4">
+              <CTableHead color="light">
+                <CTableRow>
+                  <CTableHeaderCell scope="col">Nombre</CTableHeaderCell>
+                  <CTableHeaderCell scope="col">CURP</CTableHeaderCell>
+                  <CTableHeaderCell scope="col">Contacto</CTableHeaderCell>
+                  <CTableHeaderCell scope="col">Nacimiento</CTableHeaderCell>
+                  <CTableHeaderCell scope="col">Actualización</CTableHeaderCell>
+                  {isAdmin && <CTableHeaderCell scope="col" className="text-end">Acciones</CTableHeaderCell>}
+                </CTableRow>
+              </CTableHead>
+              <CTableBody>
+                {paginatedDancers.length === 0 && (
+                  <CTableRow>
+                    <CTableDataCell colSpan={isAdmin ? 6 : 5} className="text-center py-4 text-body-secondary">
+                      No se encontraron competidores.
+                    </CTableDataCell>
+                  </CTableRow>
+                )}
+                {paginatedDancers.map((dancer) => (
+                  <CTableRow key={dancer.id}>
+                    <CTableDataCell>
+                      <div className="fw-semibold d-flex align-items-center gap-2">
+                        <CIcon icon={cilUser} className="text-primary" /> {dancer.name}
+                      </div>
+                      <div className="text-body-secondary small">{dancer.email ?? 'Sin correo'}</div>
+                    </CTableDataCell>
+                    <CTableDataCell>{dancer.curp}</CTableDataCell>
+                    <CTableDataCell>
+                      <div>{dancer.phone ?? '—'}</div>
+                      {dancer.email && (
+                        <div className="text-body-secondary small">{dancer.email}</div>
+                      )}
+                    </CTableDataCell>
+                    <CTableDataCell>
+                      {dancer.birthDate ? new Date(dancer.birthDate).toLocaleDateString('es-MX') : '—'}
+                    </CTableDataCell>
+                    <CTableDataCell>
+                      <div className="d-flex flex-column gap-1">
+                        <span className="small text-body-secondary d-flex align-items-center gap-2">
+                          <CIcon icon={cilCalendar} /> Creado: {formatDate(dancer.createdAt)}
+                        </span>
+                        <span className="small text-body-secondary d-flex align-items-center gap-2">
+                          <CIcon icon={cilCheckCircle} /> Actualizado: {formatDate(dancer.updatedAt)}
+                        </span>
+                      </div>
+                    </CTableDataCell>
+                    {isAdmin && (
+                      <CTableDataCell className="text-end">
+                        <CButtonGroup role="group" aria-label="Acciones competidor">
+                          <CButton
+                            color="secondary"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEdit(dancer)}
+                          >
+                            <CIcon icon={cilPencil} />
+                          </CButton>
+                          <CButton
+                            color="danger"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openDelete(dancer)}
+                          >
+                            <CIcon icon={cilTrash} />
+                          </CButton>
+                        </CButtonGroup>
+                      </CTableDataCell>
+                    )}
+                  </CTableRow>
+                ))}
+              </CTableBody>
+            </CTable>
+            {filteredDancers.length > filters.limit && (
+              <div className="d-flex justify-content-center">
+                <CPagination align="center" aria-label="Paginación de competidores">
+                  <CPaginationItem
+                    disabled={currentPage === 1}
+                    onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
+                  >
+                    Anterior
+                  </CPaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <CPaginationItem
+                      key={p}
+                      active={p === currentPage}
+                      onClick={() => handlePageChange(p)}
+                    >
+                      {p}
+                    </CPaginationItem>
+                  ))}
+                  <CPaginationItem
+                    disabled={currentPage === totalPages}
+                    onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
+                  >
+                    Siguiente
+                  </CPaginationItem>
+                </CPagination>
+              </div>
+            )}
+          </React.Fragment>
+        )}
+      </CModalBody>
+      <CModalFooter className="bg-body-tertiary justify-content-between">
+        <CButton color="secondary" variant="ghost" onClick={onClose} disabled={loading || formSubmitting || deleting}>
+          Cerrar
+        </CButton>
+      </CModalFooter>
+
+      <DancerFormModal
+        mode={formState.mode}
+        visible={formState.visible}
+        submitting={formSubmitting}
+        onClose={closeForm}
+        onSubmit={submitForm}
+        dancer={formState.dancer}
+        academy={academy}
+        existingCurps={existingCurps}
+        isAdmin={isAdmin}
+      />
+      <DancerDeleteModal
+        visible={deleteState.visible}
+        dancer={deleteState.dancer}
+        deleting={deleting}
+        onClose={closeDelete}
+        onConfirm={confirmDelete}
+      />
+    </CModal>
+  )
+}
+
+// Modal para crear / editar coach
+const CoachFormModal = ({
+  mode,
+  visible,
+  submitting,
+  onClose,
+  onSubmit,
+  coach,
+  academy,
+  isAdmin,
+}) => {
+  const isEditMode = mode === 'edit'
+
+  const baseState = useMemo(
+    () =>
+      isEditMode && coach
+        ? {
+            name: coach.name ?? '',
+            phone: coach.phone ?? '',
+            mail: coach.mail ?? '',
+          }
+        : {
+            name: '',
+            phone: '',
+            mail: '',
+          },
+    [isEditMode, coach],
+  )
+
+  const [formState, setFormState] = useState(baseState)
+  const [errors, setErrors] = useState({})
+
+  useEffect(() => {
+    if (visible) {
+      setFormState(baseState)
+      setErrors({})
+    }
+  }, [visible, baseState])
+
+  const handleChange = (field) => (event) => {
+    const value = event.target.value
+    setFormState((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const validate = useCallback(() => {
+    const validationErrors = {}
+
+    if (!formState.name.trim()) {
+      validationErrors.name = 'El nombre es obligatorio'
+    }
+
+    if (!formState.phone.trim()) {
+      validationErrors.phone = 'El teléfono es obligatorio'
+    }
+
+    if (formState.mail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formState.mail.trim())) {
+      validationErrors.mail = 'Correo inválido'
+    }
+
+    setErrors(validationErrors)
+    return Object.keys(validationErrors).length === 0
+  }, [formState])
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    if (!validate()) {
+      return
+    }
+
+    const payload = {
+      name: formState.name.trim(),
+      phone: formState.phone.trim(),
+      academyId: String(academy.id),
+    }
+
+    if (formState.mail.trim()) {
+      payload.mail = formState.mail.trim()
+    }
+
+    onSubmit(payload)
+  }
+
+  return (
+    <CModal visible={visible} onClose={onClose} alignment="center" size="lg" backdrop="static">
+      <CModalHeader closeButton>
+        <CModalTitle>{isEditMode ? 'Editar coach' : 'Registrar nuevo coach'} · {academy?.name}</CModalTitle>
+      </CModalHeader>
+      <CForm onSubmit={handleSubmit} noValidate>
+        <CModalBody className="py-4">
+          {!isAdmin && (
+            <CAlert color="info" className="mb-3">
+              Solo administradores pueden crear o editar coaches.
+            </CAlert>
+          )}
+          <CRow className="g-3">
+            <CCol xs={12} md={6}>
+              <CFormLabel htmlFor="coach-name">Nombre</CFormLabel>
+              <CFormInput
+                id="coach-name"
+                value={formState.name}
+                onChange={handleChange('name')}
+                required
+                invalid={Boolean(errors.name)}
+                disabled={submitting || !isAdmin}
+                autoFocus
+              />
+              {errors.name && <div className="invalid-feedback d-block">{errors.name}</div>}
+            </CCol>
+            <CCol xs={12} md={6}>
+              <CFormLabel htmlFor="coach-phone">Teléfono</CFormLabel>
+              <CFormInput
+                id="coach-phone"
+                value={formState.phone}
+                onChange={handleChange('phone')}
+                required
+                invalid={Boolean(errors.phone)}
+                disabled={submitting || !isAdmin}
+                placeholder="Ej: +52 55 1234 5678"
+              />
+              {errors.phone && <div className="invalid-feedback d-block">{errors.phone}</div>}
+            </CCol>
+            <CCol xs={12}>
+              <CFormLabel htmlFor="coach-mail">Correo electrónico</CFormLabel>
+              <CFormInput
+                id="coach-mail"
+                type="email"
+                value={formState.mail}
+                onChange={handleChange('mail')}
+                invalid={Boolean(errors.mail)}
+                disabled={submitting || !isAdmin}
+                placeholder="Opcional"
+              />
+              {errors.mail && <div className="invalid-feedback d-block">{errors.mail}</div>}
+            </CCol>
+          </CRow>
+        </CModalBody>
+        <CModalFooter className="bg-body-tertiary justify-content-between">
+          <CButton color="secondary" variant="ghost" onClick={onClose} disabled={submitting}>
+            Cancelar
+          </CButton>
+          {isAdmin && (
+            <CButton color="primary" type="submit" disabled={submitting}>
+              {submitting && <CSpinner size="sm" className="me-2" />}{' '}
+              {isEditMode ? 'Guardar cambios' : 'Crear coach'}
+            </CButton>
+          )}
+        </CModalFooter>
+      </CForm>
+    </CModal>
+  )
+}
+
+const CoachDeleteModal = ({ visible, coach, deleting, onClose, onConfirm }) => (
+  <CModal visible={visible} onClose={onClose} alignment="center" backdrop="static">
+    <CModalHeader closeButton>
+      <CModalTitle>Eliminar coach</CModalTitle>
+    </CModalHeader>
+    <CModalBody>
+      <p className="mb-3">
+        Estás a punto de eliminar al coach <strong>{coach?.name}</strong>. Esta acción es permanente.
+      </p>
+      <CAlert color="warning" className="d-flex align-items-center" variant="solid">
+        <CIcon icon={cilWarning} className="me-2" /> Confirma solo si estás seguro.
+      </CAlert>
+    </CModalBody>
+    <CModalFooter className="bg-body-tertiary justify-content-between">
+      <CButton color="secondary" variant="ghost" onClick={onClose} disabled={deleting}>
+        Cancelar
+      </CButton>
+      <CButton color="danger" onClick={onConfirm} disabled={deleting}>
+        {deleting && <CSpinner size="sm" className="me-2" />} Eliminar definitivamente
+      </CButton>
+    </CModalFooter>
+  </CModal>
+)
+
+const CoachesModal = ({ visible, academy, onClose, isAdmin }) => {
+  const [coaches, setCoaches] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [feedback, setFeedback] = useState(null)
+  const [filters, setFilters] = useState(COACH_DEFAULT_FILTERS)
+
+  const [formState, setFormState] = useState({ visible: false, mode: 'create', coach: null })
+  const [formSubmitting, setFormSubmitting] = useState(false)
+  const [deleteState, setDeleteState] = useState({ visible: false, coach: null })
+  const [deleting, setDeleting] = useState(false)
+
+  const loadCoaches = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await listCoaches()
+      setCoaches(Array.isArray(response) ? response : [])
+    } catch (requestError) {
+      console.error('Unable to load coaches', requestError)
+      setError(getErrorMessage(requestError, 'No se pudieron cargar los coaches'))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (visible && academy?.id) {
+      loadCoaches()
+      setFilters(COACH_DEFAULT_FILTERS)
+    }
+  }, [visible, academy, loadCoaches])
+
+  useEffect(() => {
+    if (!feedback) {
+      return undefined
+    }
+    const timeoutId = window.setTimeout(() => setFeedback(null), 3500)
+    return () => window.clearTimeout(timeoutId)
+  }, [feedback])
+
+  const filteredCoaches = useMemo(() => {
+    if (!academy?.id) {
+      return []
+    }
+    const normalized = filters.search.trim().toLowerCase()
+    return coaches.filter((coach) => {
+      const academyMatch = String(coach.academyId ?? coach.academy?.id ?? '') === String(academy.id)
+      if (!academyMatch) {
+        return false
+      }
+      if (!normalized) {
+        return true
+      }
+      const haystack = [coach.name, coach.phone, coach.mail]
+        .filter(Boolean)
+        .map((value) => value.toString().toLowerCase())
+      return haystack.some((value) => value.includes(normalized))
+    })
+  }, [coaches, filters.search, academy])
+
+  const totalPages = Math.max(1, Math.ceil(filteredCoaches.length / filters.limit))
+  const currentPage = Math.min(filters.page, totalPages)
+  const paginatedCoaches = useMemo(() => {
+    const start = (currentPage - 1) * filters.limit
+    const end = start + filters.limit
+    return filteredCoaches.slice(start, end)
+  }, [filteredCoaches, currentPage, filters.limit])
+
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, page: Math.min(prev.page, totalPages) }))
+  }, [totalPages])
+
+  const handleSearchChange = (event) => {
+    const value = event.target.value
+    setFilters((prev) => ({ ...prev, search: value, page: 1 }))
+  }
+  const handleLimitChange = (event) => {
+    const value = Number(event.target.value)
+    setFilters((prev) => ({ ...prev, limit: value, page: 1 }))
+  }
+  const handlePageChange = (page) => setFilters((prev) => ({ ...prev, page }))
+
+  const openCreate = () => setFormState({ visible: true, mode: 'create', coach: null })
+  const openEdit = (coach) => setFormState({ visible: true, mode: 'edit', coach })
+  const closeForm = () => {
+    if (formSubmitting) return
+    setFormState({ visible: false, mode: 'create', coach: null })
+  }
+  const openDelete = (coach) => setDeleteState({ visible: true, coach })
+  const closeDelete = () => {
+    if (deleting) return
+    setDeleteState({ visible: false, coach: null })
+  }
+
+  const submitForm = async (payload) => {
+    setFormSubmitting(true)
+    setFeedback(null)
+    try {
+      if (formState.mode === 'edit' && formState.coach) {
+        await updateCoach(formState.coach.id, payload)
+        setFeedback({ type: 'success', message: 'Coach actualizado correctamente' })
+      } else {
+        await createCoach(payload)
+        setFeedback({ type: 'success', message: 'Coach creado correctamente' })
+      }
+      setFormState({ visible: false, mode: 'create', coach: null })
+      await loadCoaches()
+    } catch (requestError) {
+      console.error('Coach submit failed', requestError)
+      setFeedback({ type: 'danger', message: getErrorMessage(requestError, 'No se pudo guardar el coach') })
+    } finally {
+      setFormSubmitting(false)
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteState.coach) return
+    setDeleting(true)
+    setFeedback(null)
+    try {
+      await deleteCoach(deleteState.coach.id)
+      setFeedback({ type: 'success', message: 'Coach eliminado correctamente' })
+      setDeleteState({ visible: false, coach: null })
+      await loadCoaches()
+    } catch (requestError) {
+      console.error('Coach delete failed', requestError)
+      setFeedback({ type: 'danger', message: getErrorMessage(requestError, 'No se pudo eliminar el coach') })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  if (!visible) {
+    return null
+  }
+
+  return (
+    <CModal visible={visible} onClose={onClose} alignment="center" size="lg" backdrop="static">
+      <CModalHeader closeButton>
+        <CModalTitle>Coaches de: {academy?.name}</CModalTitle>
+      </CModalHeader>
+      <CModalBody className="py-4">
+        {feedback && (
+          <CAlert color={feedback.type} className="mb-4" dismissible onClose={() => setFeedback(null)}>
+            {feedback.message}
+          </CAlert>
+        )}
+        {error && <CAlert color="danger" className="mb-4">{error}</CAlert>}
+        <CRow className="g-3 mb-3">
+          <CCol xs={12} md={6}>
+            <CFormLabel htmlFor="coaches-search">Buscar</CFormLabel>
+            <CInputGroup>
+              <CInputGroupText>
+                <CIcon icon={cilList} />
+              </CInputGroupText>
+              <CFormInput
+                id="coaches-search"
+                placeholder="Buscar por nombre, teléfono o correo"
+                value={filters.search}
+                onChange={handleSearchChange}
+                disabled={loading}
+              />
+            </CInputGroup>
+          </CCol>
+          <CCol xs={12} md={3}>
+            <CFormLabel htmlFor="coaches-limit">Elementos por página</CFormLabel>
+            <CFormSelect
+              id="coaches-limit"
+              value={filters.limit}
+              onChange={handleLimitChange}
+              disabled={loading}
+            >
+              {COACH_LIMIT_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </CFormSelect>
+          </CCol>
+          <CCol xs={12} md={3} className="d-flex align-items-end">
+            {isAdmin && (
+              <CButton color="primary" className="w-100" onClick={openCreate} disabled={loading}>
+                <CIcon icon={cilPlus} className="me-2" /> Nuevo coach
+              </CButton>
+            )}
+          </CCol>
+        </CRow>
+        {loading ? (
+          <div className="d-flex justify-content-center py-5">
+            <CSpinner color="primary" />
+          </div>
+        ) : (
+          <React.Fragment>
+            <CTable responsive="md" hover align="middle" className="mb-4">
+              <CTableHead color="light">
+                <CTableRow>
+                  <CTableHeaderCell scope="col">Nombre</CTableHeaderCell>
+                  <CTableHeaderCell scope="col">Teléfono</CTableHeaderCell>
+                  <CTableHeaderCell scope="col">Correo</CTableHeaderCell>
+                  <CTableHeaderCell scope="col">Actualización</CTableHeaderCell>
+                  {isAdmin && <CTableHeaderCell scope="col" className="text-end">Acciones</CTableHeaderCell>}
+                </CTableRow>
+              </CTableHead>
+              <CTableBody>
+                {paginatedCoaches.length === 0 && (
+                  <CTableRow>
+                    <CTableDataCell colSpan={isAdmin ? 5 : 4} className="text-center py-4 text-body-secondary">
+                      No se encontraron coaches.
+                    </CTableDataCell>
+                  </CTableRow>
+                )}
+                {paginatedCoaches.map((coach) => (
+                  <CTableRow key={coach.id}>
+                    <CTableDataCell>
+                      <div className="fw-semibold d-flex align-items-center gap-2">
+                        <CIcon icon={cilUserFollow} className="text-primary" /> {coach.name}
+                      </div>
+                    </CTableDataCell>
+                    <CTableDataCell>{coach.phone ?? '—'}</CTableDataCell>
+                    <CTableDataCell>{coach.mail ?? 'Sin correo'}</CTableDataCell>
+                    <CTableDataCell>
+                      <div className="d-flex flex-column gap-1">
+                        <span className="small text-body-secondary d-flex align-items-center gap-2">
+                          <CIcon icon={cilCalendar} /> Creado: {formatDate(coach.createdAt)}
+                        </span>
+                        <span className="small text-body-secondary d-flex align-items-center gap-2">
+                          <CIcon icon={cilCheckCircle} /> Actualizado: {formatDate(coach.updatedAt)}
+                        </span>
+                      </div>
+                    </CTableDataCell>
+                    {isAdmin && (
+                      <CTableDataCell className="text-end">
+                        <CButtonGroup role="group" aria-label="Acciones coach">
+                          <CButton color="secondary" variant="ghost" size="sm" onClick={() => openEdit(coach)}>
+                            <CIcon icon={cilPencil} />
+                          </CButton>
+                          <CButton color="danger" variant="ghost" size="sm" onClick={() => openDelete(coach)}>
+                            <CIcon icon={cilTrash} />
+                          </CButton>
+                        </CButtonGroup>
+                      </CTableDataCell>
+                    )}
+                  </CTableRow>
+                ))}
+              </CTableBody>
+            </CTable>
+            {filteredCoaches.length > filters.limit && (
+              <div className="d-flex justify-content-center">
+                <CPagination align="center" aria-label="Paginación de coaches">
+                  <CPaginationItem
+                    disabled={currentPage === 1}
+                    onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
+                  >
+                    Anterior
+                  </CPaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
+                    <CPaginationItem
+                      key={pageNumber}
+                      active={pageNumber === currentPage}
+                      onClick={() => handlePageChange(pageNumber)}
+                    >
+                      {pageNumber}
+                    </CPaginationItem>
+                  ))}
+                  <CPaginationItem
+                    disabled={currentPage === totalPages}
+                    onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
+                  >
+                    Siguiente
+                  </CPaginationItem>
+                </CPagination>
+              </div>
+            )}
+          </React.Fragment>
+        )}
+      </CModalBody>
+      <CModalFooter className="bg-body-tertiary justify-content-between">
+        <CButton color="secondary" variant="ghost" onClick={onClose} disabled={loading || formSubmitting || deleting}>
+          Cerrar
+        </CButton>
+      </CModalFooter>
+
+      <CoachFormModal
+        mode={formState.mode}
+        visible={formState.visible}
+        submitting={formSubmitting}
+        onClose={closeForm}
+        onSubmit={submitForm}
+        coach={formState.coach}
+        academy={academy}
+        isAdmin={isAdmin}
+      />
+      <CoachDeleteModal
+        visible={deleteState.visible}
+        coach={deleteState.coach}
+        deleting={deleting}
+        onClose={closeDelete}
+        onConfirm={confirmDelete}
+      />
+    </CModal>
+  )
+}
+
 const AcademiesManagement = () => {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
@@ -799,6 +1885,8 @@ const AcademiesManagement = () => {
     academy: null,
   })
   const [deleting, setDeleting] = useState(false)
+  const [dancersModalState, setDancersModalState] = useState({ visible: false, academy: null })
+  const [coachesModalState, setCoachesModalState] = useState({ visible: false, academy: null })
 
   const loadAcademies = useCallback(async () => {
     setLoading(true)
@@ -1100,6 +2188,22 @@ const AcademiesManagement = () => {
     }
   }
 
+  const openDancersModal = (academy) => {
+    setDancersModalState({ visible: true, academy })
+  }
+
+  const closeDancersModal = () => {
+    setDancersModalState({ visible: false, academy: null })
+  }
+
+  const openCoachesModal = (academy) => {
+    setCoachesModalState({ visible: true, academy })
+  }
+
+  const closeCoachesModal = () => {
+    setCoachesModalState({ visible: false, academy: null })
+  }
+
   return (
     <CCard>
       <CCardHeader className="d-flex flex-column flex-md-row align-items-md-center gap-2 justify-content-between">
@@ -1236,18 +2340,18 @@ const AcademiesManagement = () => {
             <CTable responsive="md" hover align="middle" className="mb-4">
               <CTableHead color="light">
                 <CTableRow>
-                  <CTableHeaderCell scope="col">Academia</CTableHeaderCell>
-                  <CTableHeaderCell scope="col">Contacto</CTableHeaderCell>
-                  <CTableHeaderCell scope="col">Ubicación</CTableHeaderCell>
-                  <CTableHeaderCell scope="col">Sitio web</CTableHeaderCell>
-                  <CTableHeaderCell scope="col">Actualización</CTableHeaderCell>
-                  {isAdmin && <CTableHeaderCell scope="col" className="text-end">Acciones</CTableHeaderCell>}
+                  <CTableHeaderCell scope="col" className="text-center">Academia</CTableHeaderCell>
+                  <CTableHeaderCell scope="col" className="text-center">Contacto</CTableHeaderCell>
+                  <CTableHeaderCell scope="col" className="text-center">Ubicación</CTableHeaderCell>
+                  <CTableHeaderCell scope="col" className="text-center">Sitio web</CTableHeaderCell>
+                  <CTableHeaderCell scope="col" className="text-center">Actualización</CTableHeaderCell>
+                  <CTableHeaderCell scope="col" className="text-center">Acciones</CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
               <CTableBody>
                 {paginatedAcademies.length === 0 && (
                   <CTableRow>
-                    <CTableDataCell colSpan={isAdmin ? 6 : 5} className="text-center py-4 text-body-secondary">
+                    <CTableDataCell colSpan={6} className="text-center py-4 text-body-secondary">
                       No se encontraron academias con los filtros seleccionados.
                     </CTableDataCell>
                   </CTableRow>
@@ -1318,23 +2422,48 @@ const AcademiesManagement = () => {
                         </span>
                       </div>
                     </CTableDataCell>
-                    {isAdmin && (
-                      <CTableDataCell className="text-end">
-                        <CButtonGroup role="group" aria-label="Acciones">
-                          <CButton color="secondary" variant="ghost" size="sm" onClick={() => openEditModal(academy)}>
-                            <CIcon icon={cilPencil} />
+                    <CTableDataCell className="text-end">
+                      <div className="d-flex flex-column align-items-end gap-2">
+                        {isAdmin && (
+                          <CButtonGroup role="group" aria-label="Acciones administrativas">
+                            <CButton
+                              color="secondary"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditModal(academy)}
+                            >
+                              <CIcon icon={cilPencil} />
+                            </CButton>
+                            <CButton
+                              color="danger"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openDeleteModal(academy)}
+                            >
+                              <CIcon icon={cilTrash} />
+                            </CButton>
+                          </CButtonGroup>
+                        )}
+                        <div className="d-flex flex-wrap justify-content-end gap-2">
+                          <CButton
+                            size="sm"
+                            color="primary"
+                            variant="outline"
+                            onClick={() => openDancersModal(academy)}
+                          >
+                            <CIcon icon={cilPeople} className="me-1" /> Ver competidores
                           </CButton>
                           <CButton
-                            color="danger"
-                            variant="ghost"
                             size="sm"
-                            onClick={() => openDeleteModal(academy)}
+                            color="info"
+                            variant="outline"
+                            onClick={() => openCoachesModal(academy)}
                           >
-                            <CIcon icon={cilTrash} />
+                            <CIcon icon={cilUser} className="me-1" /> Ver coaches
                           </CButton>
-                        </CButtonGroup>
-                      </CTableDataCell>
-                    )}
+                        </div>
+                      </div>
+                    </CTableDataCell>
                   </CTableRow>
                 ))}
               </CTableBody>
@@ -1387,6 +2516,22 @@ const AcademiesManagement = () => {
         onClose={closeDeleteModal}
         onConfirm={confirmDelete}
       />
+      {dancersModalState.visible && (
+        <DancersModal
+          visible={dancersModalState.visible}
+          academy={dancersModalState.academy}
+          onClose={closeDancersModal}
+          isAdmin={isAdmin}
+        />
+      )}
+      {coachesModalState.visible && (
+        <CoachesModal
+          visible={coachesModalState.visible}
+          academy={coachesModalState.academy}
+          onClose={closeCoachesModal}
+          isAdmin={isAdmin}
+        />
+      )}
     </CCard>
   )
 }
