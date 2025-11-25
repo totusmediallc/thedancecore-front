@@ -1697,7 +1697,7 @@ const CoachesModal = ({ visible, academy, onClose, isAdmin }) => {
   }
 
   return (
-    <CModal visible={visible} onClose={onClose} alignment="center" size="lg" backdrop="static">
+    <CModal visible={visible} onClose={onClose} alignment="center" size="xl" backdrop="static">
       <CModalHeader closeButton>
         <CModalTitle>Coaches de: {academy?.name}</CModalTitle>
       </CModalHeader>
