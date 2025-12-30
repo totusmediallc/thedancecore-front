@@ -787,7 +787,6 @@ const CategoriesPanel = ({ isAdmin }) => {
                   <CTableRow key={category.id}>
                     <CTableDataCell>
                       <div className="fw-semibold">{category.name}</div>
-                      <div className="text-body-secondary small">ID {category.id}</div>
                     </CTableDataCell>
                     <CTableDataCell>
                       <div className="fw-semibold">{formatAgeRange(category.data)}</div>
@@ -1139,7 +1138,6 @@ const SubcategoriesPanel = ({ isAdmin }) => {
                   <CTableRow key={subcategory.id}>
                     <CTableDataCell>
                       <div className="fw-semibold">{subcategory.name}</div>
-                      <div className="text-body-secondary small">ID {subcategory.id}</div>
                     </CTableDataCell>
                     <CTableDataCell>
                       <div className="fw-semibold">{formatTeamSizeRange(subcategory.data)}</div>

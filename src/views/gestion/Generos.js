@@ -527,7 +527,6 @@ const Generos = () => {
                 <CTableHead color="light">
                   <CTableRow>
                     <CTableHeaderCell scope="col">Género</CTableHeaderCell>
-                    <CTableHeaderCell scope="col">Metadatos</CTableHeaderCell>
                     {isAdmin && (
                       <CTableHeaderCell scope="col" className="text-end">
                         Acciones
@@ -539,7 +538,7 @@ const Generos = () => {
                   {paginatedGenres.length === 0 && (
                     <CTableRow>
                       <CTableDataCell
-                        colSpan={isAdmin ? 3 : 2}
+                        colSpan={isAdmin ? 2 : 1}
                         className="text-center py-4 text-body-secondary"
                       >
                         No se encontraron géneros con los filtros seleccionados.
@@ -551,10 +550,6 @@ const Generos = () => {
                     <CTableRow key={genre.id}>
                       <CTableDataCell>
                         <div className="fw-semibold">{genre.name}</div>
-                        <div className="text-body-secondary small">ID {genre.id}</div>
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        <MetadataPreview data={genre.data} />
                       </CTableDataCell>
                       {isAdmin && (
                         <CTableDataCell className="text-end">
