@@ -563,6 +563,14 @@ const _nav = [
   },
   {
     component: CNavItem,
+    name: 'Registros a Eventos',
+    to: '/events/registrations',
+    icon: <CIcon icon={cilClipboard} customClassName="nav-icon" />,
+    permission: PERMISSIONS.EVENTS_READ,
+    roles: [USER_ROLES.ADMIN],
+  },
+  {
+    component: CNavItem,
     name: 'Academias',
     to: '/gestion/academias',
     icon: <CIcon icon={cilHome} customClassName="nav-icon" />,
@@ -584,17 +592,6 @@ const _nav = [
     icon: <CIcon icon={cilFolder} customClassName="nav-icon" />,
     permission: PERMISSIONS.CATALOGS_MANAGE,
     roles: [USER_ROLES.ADMIN],
-  },
-  {
-    component: CNavItem,
-    name: 'Registro de Academias',
-    to: '/academy/events',
-    icon: <CIcon icon={cilClipboard} customClassName="nav-icon" />,
-    roles: [USER_ROLES.ADMIN],
-    badge: {
-      color: 'primary',
-      text: 'VER',
-    },
   },
   {
     component: CNavTitle,

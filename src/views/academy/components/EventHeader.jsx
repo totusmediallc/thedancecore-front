@@ -22,6 +22,8 @@ import {
   cilPeople,
   cilMusicNote,
   cilUser,
+  cilSettings,
+  cilReload,
 } from '@coreui/icons'
 
 import { API_BASE_URL } from '../../../config/apiConfig'
@@ -126,8 +128,11 @@ const EventHeader = ({
   onAcceptInvitation,
   onRejectInvitation,
   onCompleteRegistration,
+  onValidateRegistration,
+  onReactivateRegistration,
   isSubmitting,
   isReadOnly,
+  isAdmin,
 }) => {
   if (!event || !registration) {
     return (
@@ -480,6 +485,94 @@ const EventHeader = ({
                 <strong>¡Registro completado!</strong> Tu participación ha sido confirmada.
               </CAlert>
             )}
+
+            {/* Panel de administración para gestionar estados */}
+            {isAdmin && (
+              <div className="bg-dark bg-opacity-10 rounded p-4 mt-4 border border-warning">
+                <div className="d-flex align-items-center mb-3">
+                  <CIcon icon={cilSettings} className="me-2 text-warning" />
+                  <h6 className="mb-0 text-warning">Panel de Administración</h6>
+                </div>
+                <p className="text-body-secondary small mb-3">
+                  Como administrador puedes cambiar el estado del registro de esta academia.
+                </p>
+                
+                <div className="d-flex gap-2 flex-wrap">
+                  {/* Botón para aprobar/validar registro */}
+                  {registration.status === 'registered' && (
+                    <CButton
+                      color="success"
+                      onClick={onValidateRegistration}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? <CSpinner size="sm" className="me-2" /> : null}
+                      <CIcon icon={cilCheckCircle} className="me-1" />
+                      Aprobar Registro
+                    </CButton>
+                  )}
+
+                  {/* Botón para reactivar registro (permitir ediciones) */}
+                  {['registered', 'completed'].includes(registration.status) && (
+                    <CButton
+                      color="warning"
+                      onClick={onReactivateRegistration}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? <CSpinner size="sm" className="me-2" /> : null}
+                      <CIcon icon={cilReload} className="me-1" />
+                      Reactivar para Edición
+                    </CButton>
+                  )}
+
+                  {/* Botón para marcar como completado directamente */}
+                  {registration.status === 'accepted' && (
+                    <CButton
+                      color="success"
+                      variant="outline"
+                      onClick={onValidateRegistration}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? <CSpinner size="sm" className="me-2" /> : null}
+                      <CIcon icon={cilCheckCircle} className="me-1" />
+                      Marcar como Completado
+                    </CButton>
+                  )}
+                </div>
+
+                <div className="mt-3">
+                  <small className="text-body-secondary">
+                    <strong>Estado actual:</strong>{' '}
+                    <CBadge color={statusConfig.color}>{statusConfig.label}</CBadge>
+                  </small>
+                  <div className="mt-2 small text-body-secondary">
+                    <strong>Transiciones disponibles:</strong>
+                    <ul className="mb-0 ps-3 mt-1">
+                      {registration.status === 'invited' && (
+                        <li>La academia debe aceptar o rechazar la invitación</li>
+                      )}
+                      {registration.status === 'accepted' && (
+                        <>
+                          <li>La academia puede enviar su registro → <em>Registro Enviado</em></li>
+                          <li>Puedes marcar directamente como completado</li>
+                        </>
+                      )}
+                      {registration.status === 'registered' && (
+                        <>
+                          <li>Aprobar registro → <em>Completado</em></li>
+                          <li>Reactivar → <em>En Registro</em> (permite ediciones)</li>
+                        </>
+                      )}
+                      {registration.status === 'completed' && (
+                        <li>Reactivar → <em>En Registro</em> (permite ediciones)</li>
+                      )}
+                      {registration.status === 'rejected' && (
+                        <li>Estado final - La academia rechazó la invitación</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 
@@ -539,8 +632,11 @@ EventHeader.propTypes = {
   onAcceptInvitation: PropTypes.func,
   onRejectInvitation: PropTypes.func,
   onCompleteRegistration: PropTypes.func,
+  onValidateRegistration: PropTypes.func,
+  onReactivateRegistration: PropTypes.func,
   isSubmitting: PropTypes.bool,
   isReadOnly: PropTypes.bool,
+  isAdmin: PropTypes.bool,
 }
 
 EventHeader.defaultProps = {
@@ -550,8 +646,11 @@ EventHeader.defaultProps = {
   onAcceptInvitation: () => {},
   onRejectInvitation: () => {},
   onCompleteRegistration: () => {},
+  onValidateRegistration: () => {},
+  onReactivateRegistration: () => {},
   isSubmitting: false,
   isReadOnly: false,
+  isAdmin: false,
 }
 
 export default EventHeader

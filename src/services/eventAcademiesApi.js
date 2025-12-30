@@ -95,12 +95,32 @@ export const rejectEventInvitation = async (academyId, eventId) => {
 }
 
 /**
- * Marca el registro como completado
+ * Marca el registro como completado (enviado por la academia)
  * @param {string} academyId - ID de la academia
  * @param {string} eventId - ID del evento
  */
 export const completeEventRegistration = async (academyId, eventId) => {
   return updateEventAcademyStatus(academyId, eventId, { status: 'registered' })
+}
+
+/**
+ * Valida/aprueba el registro de una academia (Admin)
+ * Cambia el estado de 'registered' a 'completed'
+ * @param {string} academyId - ID de la academia
+ * @param {string} eventId - ID del evento
+ */
+export const validateEventRegistration = async (academyId, eventId) => {
+  return updateEventAcademyStatus(academyId, eventId, { status: 'completed' })
+}
+
+/**
+ * Reactiva el registro de una academia para permitir ediciones (Admin)
+ * Cambia el estado de vuelta a 'accepted'
+ * @param {string} academyId - ID de la academia
+ * @param {string} eventId - ID del evento
+ */
+export const reactivateEventRegistration = async (academyId, eventId) => {
+  return updateEventAcademyStatus(academyId, eventId, { status: 'accepted' })
 }
 
 // ==========================================
@@ -145,6 +165,8 @@ export default {
   acceptEventInvitation,
   rejectEventInvitation,
   completeEventRegistration,
+  validateEventRegistration,
+  reactivateEventRegistration,
   assignAcademyToEvent,
   bulkAssignAcademiesToEvent,
   removeAcademyFromEvent,

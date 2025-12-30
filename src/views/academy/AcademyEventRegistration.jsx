@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import CIcon from '@coreui/icons-react'
 import {
@@ -36,6 +36,8 @@ import {
   acceptEventInvitation,
   rejectEventInvitation,
   completeEventRegistration,
+  validateEventRegistration,
+  reactivateEventRegistration,
 } from '../../services/eventAcademiesApi'
 import { getEventAcademyCoaches } from '../../services/eventAcademyCoachesApi'
 import { HttpError } from '../../services/httpClient'
@@ -61,8 +63,12 @@ const getErrorMessage = (error, fallback = 'Ocurrió un error inesperado') => {
 
 const AcademyEventRegistration = () => {
   const { eventId } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { isAdmin, academyId: userAcademyId, academy: userAcademy } = usePermissions()
+
+  // Obtener academyId de query params (cuando admin viene de gestión de registros)
+  const queryAcademyId = searchParams.get('academyId')
 
   // Estados principales
   const [loading, setLoading] = useState(true)
@@ -72,7 +78,7 @@ const AcademyEventRegistration = () => {
 
   // Estado para selección de academia (admin)
   const [academies, setAcademies] = useState([])
-  const [selectedAcademyId, setSelectedAcademyId] = useState('')
+  const [selectedAcademyId, setSelectedAcademyId] = useState(queryAcademyId || '')
   const [loadingAcademies, setLoadingAcademies] = useState(false)
 
   // Datos del registro
@@ -100,8 +106,8 @@ const AcademyEventRegistration = () => {
       try {
         const response = await listAcademies({ limit: 100 })
         setAcademies(response?.data || response || [])
-        // Si hay un academyId del usuario, seleccionarlo por defecto
-        if (userAcademyId && !selectedAcademyId) {
+        // Si viene un academyId por query, usarlo; si no, usar el del usuario
+        if (!selectedAcademyId && !queryAcademyId && userAcademyId) {
           setSelectedAcademyId(userAcademyId)
         }
       } catch (err) {
@@ -111,7 +117,7 @@ const AcademyEventRegistration = () => {
       }
     }
     loadAcademies()
-  }, [isAdmin, userAcademyId, selectedAcademyId])
+  }, [isAdmin, userAcademyId, selectedAcademyId, queryAcademyId])
 
   // Cargar datos del registro
   const loadData = useCallback(async () => {
@@ -229,6 +235,46 @@ const AcademyEventRegistration = () => {
       handleRefresh()
     } catch (err) {
       alert(getErrorMessage(err, 'Error al completar el registro'))
+    } finally {
+      setSubmitting(false)
+    }
+  }, [effectiveAcademyId, eventId, handleRefresh])
+
+  // Validar/aprobar registro (Admin)
+  const handleValidateRegistration = useCallback(async () => {
+    if (!effectiveAcademyId || !eventId) return
+    
+    const confirmMessage = '¿Estás seguro de aprobar este registro?\n\nEl estado cambiará a "Completado".'
+    if (!window.confirm(confirmMessage)) {
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await validateEventRegistration(effectiveAcademyId, eventId)
+      handleRefresh()
+    } catch (err) {
+      alert(getErrorMessage(err, 'Error al aprobar el registro'))
+    } finally {
+      setSubmitting(false)
+    }
+  }, [effectiveAcademyId, eventId, handleRefresh])
+
+  // Reactivar registro para permitir ediciones (Admin)
+  const handleReactivateRegistration = useCallback(async () => {
+    if (!effectiveAcademyId || !eventId) return
+    
+    const confirmMessage = '¿Estás seguro de reactivar este registro?\n\nLa academia podrá editar su información nuevamente y deberá volver a enviar el registro.'
+    if (!window.confirm(confirmMessage)) {
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await reactivateEventRegistration(effectiveAcademyId, eventId)
+      handleRefresh()
+    } catch (err) {
+      alert(getErrorMessage(err, 'Error al reactivar el registro'))
     } finally {
       setSubmitting(false)
     }
@@ -418,8 +464,11 @@ const AcademyEventRegistration = () => {
             onAcceptInvitation={handleAcceptInvitation}
             onRejectInvitation={handleRejectInvitation}
             onCompleteRegistration={handleCompleteRegistration}
+            onValidateRegistration={handleValidateRegistration}
+            onReactivateRegistration={handleReactivateRegistration}
             isSubmitting={submitting}
             isReadOnly={isReadOnly}
+            isAdmin={isAdmin}
           />
 
           {/* Tabs de contenido (solo si aceptó la invitación) */}
