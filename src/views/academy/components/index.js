@@ -1,0 +1,5 @@
+export { default as EventHeader } from './EventHeader'
+export { default as ChoreographiesSection } from './ChoreographiesSection'
+export { default as DancersSection } from './DancersSection'
+export { default as CoachesSection } from './CoachesSection'
+export { default as TshirtOrderSection } from './TshirtOrderSection'

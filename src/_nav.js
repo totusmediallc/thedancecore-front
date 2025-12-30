@@ -9,6 +9,7 @@ import {
   cilDescription,
   cilDrop,
   cilExternalLink,
+  cilHome,
   cilLockLocked,
   cilNotes,
   cilPencil,
@@ -18,6 +19,7 @@ import {
   cilSpeedometer,
   cilStar,
   cilUser,
+  cilClipboard,
 } from '@coreui/icons'
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
 
@@ -515,12 +517,36 @@ const _nav = [
       text: 'NEW',
     },
   },
+  // Sección para Academias (usuarios de academia)
+  {
+    component: CNavTitle,
+    name: 'Mi Academia',
+    roles: [USER_ROLES.ACADEMY, USER_ROLES.TEACHER],
+  },
+  {
+    component: CNavItem,
+    name: 'Mis Eventos',
+    to: '/academy/events',
+    icon: <CIcon icon={cilCalendar} customClassName="nav-icon" />,
+    roles: [USER_ROLES.ACADEMY, USER_ROLES.TEACHER],
+    badge: {
+      color: 'warning',
+      text: 'NUEVO',
+    },
+  },
+  // Sección administrativa
+  {
+    component: CNavTitle,
+    name: 'Administración',
+    roles: [USER_ROLES.ADMIN],
+  },
   {
     component: CNavItem,
     name: 'Eventos',
     to: '/events',
     icon: <CIcon icon={cilCalendar} customClassName="nav-icon" />,
     permission: PERMISSIONS.EVENTS_READ,
+    roles: [USER_ROLES.ADMIN],
   },
   {
     component: CNavGroup,
@@ -528,6 +554,7 @@ const _nav = [
     to: '/gestion',
     icon: <CIcon icon={cilPuzzle} customClassName="nav-icon" />,
     permission: [PERMISSIONS.ACADEMIES_READ, PERMISSIONS.DANCERS_READ, PERMISSIONS.COACHES_READ],
+    roles: [USER_ROLES.ADMIN],
     items: [
       {
         component: CNavItem,
@@ -552,8 +579,19 @@ const _nav = [
     ],
   },
   {
+    component: CNavItem,
+    name: 'Registro de Academias',
+    to: '/academy/events',
+    icon: <CIcon icon={cilClipboard} customClassName="nav-icon" />,
+    roles: [USER_ROLES.ADMIN],
+    badge: {
+      color: 'primary',
+      text: 'VER',
+    },
+  },
+  {
     component: CNavTitle,
-    name: 'Administración',
+    name: 'Usuarios',
     roles: [USER_ROLES.ADMIN],
   },
   {

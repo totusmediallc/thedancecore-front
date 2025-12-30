@@ -17,6 +17,7 @@ import {
   cilLocationPin,
   cilUser,
   cilUserFollow,
+  cilMediaPlay,
 } from '@coreui/icons'
 import {
   CAlert,
@@ -62,6 +63,7 @@ import {
 } from '../../services/academiesApi'
 import AcademyUsersModal from './AcademyUsersModal'
 import AcademyWithUserFormModal from './AcademyWithUserFormModal'
+import AcademyEventsModal from './AcademyEventsModal'
 import {
   listDancers,
   createDancer,
@@ -1891,6 +1893,7 @@ const AcademiesManagement = () => {
   const [dancersModalState, setDancersModalState] = useState({ visible: false, academy: null })
   const [coachesModalState, setCoachesModalState] = useState({ visible: false, academy: null })
   const [usersModalState, setUsersModalState] = useState({ visible: false, academy: null })
+  const [eventsModalState, setEventsModalState] = useState({ visible: false, academy: null })
   const [withUserModalState, setWithUserModalState] = useState({ visible: false })
   const [withUserSubmitting, setWithUserSubmitting] = useState(false)
 
@@ -2210,6 +2213,15 @@ const AcademiesManagement = () => {
     setCoachesModalState({ visible: false, academy: null })
   }
 
+  // Handlers para modal de eventos de academia
+  const openEventsModal = (academy) => {
+    setEventsModalState({ visible: true, academy })
+  }
+
+  const closeEventsModal = () => {
+    setEventsModalState({ visible: false, academy: null })
+  }
+
   // Handlers para modal de usuarios de academia
   const openUsersModal = (academy) => {
     setUsersModalState({ visible: true, academy })
@@ -2507,6 +2519,14 @@ const AcademiesManagement = () => {
                           >
                             <CIcon icon={cilUser} className="me-1" /> Ver coaches
                           </CButton>
+                          <CButton
+                            size="sm"
+                            color="success"
+                            variant="outline"
+                            onClick={() => openEventsModal(academy)}
+                          >
+                            <CIcon icon={cilMediaPlay} className="me-1" /> Ver eventos
+                          </CButton>
                           {isAdmin && (
                             <CButton
                               size="sm"
@@ -2585,6 +2605,14 @@ const AcademiesManagement = () => {
           visible={coachesModalState.visible}
           academy={coachesModalState.academy}
           onClose={closeCoachesModal}
+          isAdmin={isAdmin}
+        />
+      )}
+      {eventsModalState.visible && (
+        <AcademyEventsModal
+          visible={eventsModalState.visible}
+          academy={eventsModalState.academy}
+          onClose={closeEventsModal}
           isAdmin={isAdmin}
         />
       )}

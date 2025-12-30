@@ -43,6 +43,19 @@ export const listDancers = async (params = {}) => {
 }
 
 /**
+ * Crea un nuevo bailarín o vincula uno existente (por CURP)
+ * @param {Object} payload - Datos del bailarín
+ * @param {string} payload.name - Nombre completo
+ * @param {string} [payload.email] - Correo electrónico
+ * @param {string} [payload.phone] - Teléfono
+ * @param {string} payload.birthDate - Fecha de nacimiento (ISO)
+ * @param {string} payload.curp - CURP único
+ * @param {string} payload.academyId - ID de la academia
+ * @returns {Promise<{dancer: Dancer, wasLinked: boolean, message: string}>}
+ */
+export const createOrLinkDancer = async (payload) => post(`${BASE_PATH}/create-or-link`, payload)
+
+/**
  * Crea un nuevo bailarín
  * @param {Object} payload - Datos del bailarín
  * @param {string} payload.name - Nombre completo
@@ -50,9 +63,16 @@ export const listDancers = async (params = {}) => {
  * @param {string} [payload.phone] - Teléfono
  * @param {string} payload.birthDate - Fecha de nacimiento (ISO)
  * @param {string} payload.curp - CURP único
- * @param {string[]} payload.academyIds - IDs de academias asociadas
+ * @param {string} payload.academyId - ID de la academia (usa create-or-link)
+ * @param {string[]} [payload.academyIds] - IDs de academias asociadas (create normal)
  */
-export const createDancer = async (payload) => post(BASE_PATH, payload)
+export const createDancer = async (payload) => {
+  // Si viene academyId, usar create-or-link
+  if (payload.academyId) {
+    return createOrLinkDancer(payload)
+  }
+  return post(BASE_PATH, payload)
+}
 
 /**
  * Actualiza un bailarín existente
@@ -76,6 +96,7 @@ export const getDancer = async (dancerId) => get(`${BASE_PATH}/${dancerId}`)
 export default {
   listDancers,
   createDancer,
+  createOrLinkDancer,
   updateDancer,
   deleteDancer,
   getDancer,

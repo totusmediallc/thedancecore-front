@@ -6,6 +6,10 @@ const Typography = React.lazy(() => import('./views/theme/typography/Typography'
 
 const EventsManagement = React.lazy(() => import('./views/events/Events'))
 
+// Academia - Panel de usuario de academia
+const AcademyEvents = React.lazy(() => import('./views/academy/AcademyEvents'))
+const AcademyEventRegistration = React.lazy(() => import('./views/academy/AcademyEventRegistration'))
+
 // Gestión (renombrado desde "academias")
 const GestionAcademias = React.lazy(() => import('./views/gestion/Academias'))
 const GestionCompetidores = React.lazy(() => import('./views/gestion/Competidores'))
@@ -75,6 +79,10 @@ const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
   { path: '/events', name: 'Eventos', element: EventsManagement },
+  // Academia - Panel de usuario de academia
+  { path: '/academy', name: 'Mi Academia', element: AcademyEvents, exact: true },
+  { path: '/academy/events', name: 'Mis Eventos', element: AcademyEvents },
+  { path: '/academy/events/:eventId', name: 'Registro a Evento', element: AcademyEventRegistration },
   // Gestión
   { path: '/gestion', name: 'Gestión', element: GestionAcademias, exact: true },
   { path: '/gestion/academias', name: 'Academias', element: GestionAcademias },

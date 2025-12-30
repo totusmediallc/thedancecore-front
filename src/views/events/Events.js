@@ -11,6 +11,7 @@ import {
   cilLocationPin,
   cilMap,
   cilPencil,
+  cilPeople,
   cilPlus,
   cilReload,
   cilTrash,
@@ -55,6 +56,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { listColonies, listMunicipalities, listStates } from '../../services/locationsApi'
 import { createEvent, deleteEvent, listEvents, updateEvent } from '../../services/eventsApi'
 import { HttpError } from '../../services/httpClient'
+import EventAcademiesModal from './EventAcademiesModal'
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -1179,6 +1181,17 @@ const EventsManagement = () => {
   const [deleteModalState, setDeleteModalState] = useState({ visible: false, event: null })
   const [deleting, setDeleting] = useState(false)
 
+  // Estado para modal de academias
+  const [academiesModalState, setAcademiesModalState] = useState({ visible: false, event: null })
+
+  const openAcademiesModal = useCallback((event) => {
+    setAcademiesModalState({ visible: true, event })
+  }, [])
+
+  const closeAcademiesModal = useCallback(() => {
+    setAcademiesModalState({ visible: false, event: null })
+  }, [])
+
   const loadEvents = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -1734,6 +1747,14 @@ const EventsManagement = () => {
                               </CButton>
                             </CButtonGroup>
                           )}
+                          <CButton
+                            size="sm"
+                            color="info"
+                            variant="outline"
+                            onClick={() => openAcademiesModal(event)}
+                          >
+                            <CIcon icon={cilPeople} className="me-1" /> Ver Academias
+                          </CButton>
                         </div>
                       </CTableDataCell>
                     </CTableRow>
@@ -1789,6 +1810,13 @@ const EventsManagement = () => {
         deleting={deleting}
         onClose={closeDeleteModal}
         onConfirm={confirmDelete}
+      />
+
+      <EventAcademiesModal
+        visible={academiesModalState.visible}
+        event={academiesModalState.event}
+        onClose={closeAcademiesModal}
+        isAdmin={isAdmin}
       />
     </CCard>
   )

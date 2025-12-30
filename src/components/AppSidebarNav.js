@@ -20,12 +20,8 @@ export const AppSidebarNav = ({ items }) => {
       return true
     }
 
-    // Admin siempre ve todo
-    if (isAdmin) {
-      return true
-    }
-
-    // Verificar roles si están definidos
+    // Si tiene roles definidos, verificar estrictamente
+    // (incluso admin debe cumplir el rol si está especificado)
     if (item.roles && item.roles.length > 0) {
       if (!hasRole(item.roles)) {
         return false
@@ -34,6 +30,10 @@ export const AppSidebarNav = ({ items }) => {
 
     // Verificar permisos si están definidos
     if (item.permission) {
+      // Admin siempre tiene todos los permisos
+      if (isAdmin) {
+        return true
+      }
       const permissions = Array.isArray(item.permission) ? item.permission : [item.permission]
       if (!hasAnyPermission(permissions)) {
         return false
