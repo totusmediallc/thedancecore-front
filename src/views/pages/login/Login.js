@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   CAlert,
   CButton,
@@ -20,6 +20,7 @@ import { cilLockLocked, cilUser } from '@coreui/icons'
 
 import { useAuth } from '../../../hooks/useAuth'
 import { HttpError } from '../../../services/httpClient'
+import tdcLogo from 'src/assets/images/tdc01.png'
 
 const Login = () => {
   const navigate = useNavigate()
@@ -67,13 +68,33 @@ const Login = () => {
     }
   }
 
+  const infoCardBackground = '#007ae7' // Change this hex to update the logo panel color
+
   return (
     <div className="bg-body-tertiary min-vh-100 d-flex flex-row align-items-center">
       <CContainer>
         <CRow className="justify-content-center">
-          <CCol md={8} lg={7} xl={6}>
-            <CCardGroup>
-              <CCard className="p-4">
+          <CCol md={10} lg={9} xl={8}>
+            <CCardGroup className="w-100">
+              <CCard
+                className="text-white py-5 border-0"
+                style={{
+                  flex: '0 0 55%',
+                  maxWidth: '55%',
+                  backgroundColor: infoCardBackground,
+                }}
+              >
+                <CCardBody className="d-flex justify-content-center align-items-center">
+                  <img src={tdcLogo} alt="The Dance Core" style={{ maxHeight: '120px' }} />
+                </CCardBody>
+              </CCard>
+              <CCard
+                className="p-4"
+                style={{
+                  flex: '0 0 45%',
+                  maxWidth: '45%',
+                }}
+              >
                 <CCardBody>
                   <CForm onSubmit={handleSubmit} noValidate>
                     <h1 className="mb-2">Iniciar sesión</h1>
@@ -133,22 +154,6 @@ const Login = () => {
                       </CCol>
                     </CRow>
                   </CForm>
-                </CCardBody>
-              </CCard>
-              <CCard className="text-white bg-primary py-5" style={{ width: '44%' }}>
-                <CCardBody className="text-center">
-                  <div>
-                    <h2>¿Nuevo por aquí?</h2>
-                    <p>
-                      Solicita al equipo administrador la creación de tu usuario para acceder al
-                      panel de gestión.
-                    </p>
-                    <Link to="/register">
-                      <CButton color="primary" className="mt-3" active tabIndex={-1}>
-                        Más información
-                      </CButton>
-                    </Link>
-                  </div>
                 </CCardBody>
               </CCard>
             </CCardGroup>

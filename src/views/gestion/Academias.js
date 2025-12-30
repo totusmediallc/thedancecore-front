@@ -55,10 +55,13 @@ import { useAuth } from '../../hooks/useAuth'
 import { HttpError } from '../../services/httpClient'
 import {
   createAcademy,
+  createAcademyWithUser,
   deleteAcademy,
   listAcademies,
   updateAcademy,
 } from '../../services/academiesApi'
+import AcademyUsersModal from './AcademyUsersModal'
+import AcademyWithUserFormModal from './AcademyWithUserFormModal'
 import {
   listDancers,
   createDancer,
@@ -1887,6 +1890,9 @@ const AcademiesManagement = () => {
   const [deleting, setDeleting] = useState(false)
   const [dancersModalState, setDancersModalState] = useState({ visible: false, academy: null })
   const [coachesModalState, setCoachesModalState] = useState({ visible: false, academy: null })
+  const [usersModalState, setUsersModalState] = useState({ visible: false, academy: null })
+  const [withUserModalState, setWithUserModalState] = useState({ visible: false })
+  const [withUserSubmitting, setWithUserSubmitting] = useState(false)
 
   const loadAcademies = useCallback(async () => {
     setLoading(true)
@@ -2204,6 +2210,41 @@ const AcademiesManagement = () => {
     setCoachesModalState({ visible: false, academy: null })
   }
 
+  // Handlers para modal de usuarios de academia
+  const openUsersModal = (academy) => {
+    setUsersModalState({ visible: true, academy })
+  }
+
+  const closeUsersModal = () => {
+    setUsersModalState({ visible: false, academy: null })
+  }
+
+  // Handlers para modal de crear academia con usuario
+  const openWithUserModal = () => {
+    setWithUserModalState({ visible: true })
+  }
+
+  const closeWithUserModal = () => {
+    if (withUserSubmitting) return
+    setWithUserModalState({ visible: false })
+  }
+
+  const submitWithUserForm = async (payload) => {
+    setWithUserSubmitting(true)
+    setFeedback(null)
+    try {
+      await createAcademyWithUser(payload)
+      setFeedback({ type: 'success', message: 'Academia y usuario creados correctamente' })
+      setWithUserModalState({ visible: false })
+      await loadAcademies()
+    } catch (requestError) {
+      console.error('Academy with user submit failed', requestError)
+      setFeedback({ type: 'danger', message: getErrorMessage(requestError, 'No se pudo crear la academia con usuario') })
+    } finally {
+      setWithUserSubmitting(false)
+    }
+  }
+
   return (
     <CCard>
       <CCardHeader className="d-flex flex-column flex-md-row align-items-md-center gap-2 justify-content-between">
@@ -2211,14 +2252,19 @@ const AcademiesManagement = () => {
           <h5 className="mb-0">Academias</h5>
           <small className="text-body-secondary">Gestiona el alta, edición y baja de academias</small>
         </div>
-        <div className="d-flex gap-2">
+        <div className="d-flex gap-2 flex-wrap">
           <CButton color="secondary" variant="ghost" onClick={loadAcademies} disabled={loading}>
             {loading ? <CSpinner size="sm" /> : <CIcon icon={cilReload} />}
           </CButton>
           {isAdmin && (
-            <CButton color="primary" onClick={openCreateModal}>
-              <CIcon icon={cilPlus} className="me-2" /> Nueva academia
-            </CButton>
+            <>
+              <CButton color="primary" onClick={openCreateModal}>
+                <CIcon icon={cilPlus} className="me-2" /> Nueva academia
+              </CButton>
+              <CButton color="success" onClick={openWithUserModal}>
+                <CIcon icon={cilUserFollow} className="me-2" /> Academia + Usuario
+              </CButton>
+            </>
           )}
         </div>
       </CCardHeader>
@@ -2461,6 +2507,16 @@ const AcademiesManagement = () => {
                           >
                             <CIcon icon={cilUser} className="me-1" /> Ver coaches
                           </CButton>
+                          {isAdmin && (
+                            <CButton
+                              size="sm"
+                              color="warning"
+                              variant="outline"
+                              onClick={() => openUsersModal(academy)}
+                            >
+                              <CIcon icon={cilUserFollow} className="me-1" /> Usuarios
+                            </CButton>
+                          )}
                         </div>
                       </div>
                     </CTableDataCell>
@@ -2532,6 +2588,20 @@ const AcademiesManagement = () => {
           isAdmin={isAdmin}
         />
       )}
+      {usersModalState.visible && (
+        <AcademyUsersModal
+          visible={usersModalState.visible}
+          academy={usersModalState.academy}
+          onClose={closeUsersModal}
+          isAdmin={isAdmin}
+        />
+      )}
+      <AcademyWithUserFormModal
+        visible={withUserModalState.visible}
+        submitting={withUserSubmitting}
+        onClose={closeWithUserModal}
+        onSubmit={submitWithUserForm}
+      />
     </CCard>
   )
 }

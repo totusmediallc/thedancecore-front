@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { NavLink } from 'react-router-dom'
 import PropTypes from 'prop-types'
 
@@ -6,8 +6,72 @@ import SimpleBar from 'simplebar-react'
 import 'simplebar-react/dist/simplebar.min.css'
 
 import { CBadge, CNavLink, CSidebarNav } from '@coreui/react'
+import { usePermissions } from '../hooks/usePermissions'
 
 export const AppSidebarNav = ({ items }) => {
+  const { hasPermission, hasAnyPermission, hasRole, isAdmin } = usePermissions()
+
+  /**
+   * Verifica si un item del menú debe mostrarse según permisos y roles
+   */
+  const canShowItem = (item) => {
+    // Si no tiene restricciones, mostrar
+    if (!item.permission && !item.roles) {
+      return true
+    }
+
+    // Admin siempre ve todo
+    if (isAdmin) {
+      return true
+    }
+
+    // Verificar roles si están definidos
+    if (item.roles && item.roles.length > 0) {
+      if (!hasRole(item.roles)) {
+        return false
+      }
+    }
+
+    // Verificar permisos si están definidos
+    if (item.permission) {
+      const permissions = Array.isArray(item.permission) ? item.permission : [item.permission]
+      if (!hasAnyPermission(permissions)) {
+        return false
+      }
+    }
+
+    return true
+  }
+
+  /**
+   * Filtra recursivamente los items del menú
+   */
+  const filterItems = (itemList) => {
+    if (!itemList) return []
+
+    return itemList.reduce((acc, item) => {
+      // Verificar si el item debe mostrarse
+      if (!canShowItem(item)) {
+        return acc
+      }
+
+      // Si tiene sub-items, filtrarlos también
+      if (item.items && item.items.length > 0) {
+        const filteredSubItems = filterItems(item.items)
+        // Solo mostrar el grupo si tiene al menos un sub-item visible
+        if (filteredSubItems.length > 0) {
+          acc.push({ ...item, items: filteredSubItems })
+        }
+      } else {
+        acc.push(item)
+      }
+
+      return acc
+    }, [])
+  }
+
+  const filteredItems = useMemo(() => filterItems(items), [items, hasPermission, hasRole, isAdmin])
+
   const navLink = (name, icon, badge, indent = false) => {
     return (
       <>
@@ -29,7 +93,7 @@ export const AppSidebarNav = ({ items }) => {
   }
 
   const navItem = (item, index, indent = false) => {
-    const { component, name, badge, icon, ...rest } = item
+    const { component, name, badge, icon, permission, roles, ...rest } = item
     const Component = component
     return (
       <Component as="div" key={index}>
@@ -49,12 +113,12 @@ export const AppSidebarNav = ({ items }) => {
   }
 
   const navGroup = (item, index) => {
-    const { component, name, icon, items, to, ...rest } = item
+    const { component, name, icon, items, to, permission, roles, ...rest } = item
     const Component = component
     return (
       <Component compact as="div" key={index} toggler={navLink(name, icon)} {...rest}>
-        {items?.map((item, index) =>
-          item.items ? navGroup(item, index) : navItem(item, index, true),
+        {items?.map((subItem, subIndex) =>
+          subItem.items ? navGroup(subItem, subIndex) : navItem(subItem, subIndex, true),
         )}
       </Component>
     )
@@ -62,8 +126,8 @@ export const AppSidebarNav = ({ items }) => {
 
   return (
     <CSidebarNav as={SimpleBar}>
-      {items &&
-        items.map((item, index) => (item.items ? navGroup(item, index) : navItem(item, index)))}
+      {filteredItems &&
+        filteredItems.map((item, index) => (item.items ? navGroup(item, index) : navItem(item, index)))}
     </CSidebarNav>
   )
 }

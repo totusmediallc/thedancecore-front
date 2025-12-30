@@ -67,6 +67,15 @@ La carpeta anterior `src/views/academias` fue reemplazada por `src/views/gestion
 - El formulario modal valida campos obligatorios (`name`, `contactPhoneNumber`, `mail`, `colonyId`, `googlemaps`) y URLs opcionales (`web`, `logo`). El flujo de ubicación usa selectores dependientes alimentados por `/locations/states`, `/locations/municipalities` y `/locations/colonies`, permitiendo filtrar escribiendo mientras se buscan municipios o colonias.
 - Las acciones sensibles (guardar/eliminar) muestran retroalimentación contextual y una confirmación dedicada antes de borrar registros (hard delete en backend).
 
+## Gestión de eventos (`#/events`)
+
+- Nueva vista autónoma que antecede al menú **Gestión** y centraliza la administración de eventos de la agencia.
+- El listado soporta búsqueda libre, filtros por estado/municipio/colonia, rango de fechas, estado temporal (Próximo/En curso/Finalizado/Borrador) y paginación local (10/20/50 ítems).
+- Todos los usuarios autenticados pueden consultar el detalle; únicamente el rol `admin` puede crear, editar o eliminar. Los usuarios sin permisos ven un aviso informativo y los botones de acción quedan deshabilitados.
+- El formulario modal consume `/locations/*` para poblar selectores dependientes, valida rango de fechas (`startDate`/`endDate`) y campo `colonyId`, permite registrar una dirección textual y editar el campo `data` (JSON libre para metadatos como precios, notas logísticas, etc.).
+- El banner se sube vía multipart a `/events` / `/events/:id` con validaciones en cliente: solo JPG o PNG de hasta 12 MB, vista previa, opción para optimizar (re-escala a 1600×900 a ~90 % de calidad) y limpieza del archivo antes de enviar. Si no se adjunta uno nuevo durante un `PATCH` se conserva la imagen existente.
+- Desde el listado se puede abrir el banner público (concatenando `API_BASE_URL` + `banner`) y lanzar una búsqueda en Google Maps construida con dirección, colonia y estado. Cada acción sensible está envuelta en `CModal` con confirmación y feedback contextual.
+
 ## Recursos adicionales
 
 - **Template base**: [CoreUI React Dashboard Template](https://coreui.io/react/)

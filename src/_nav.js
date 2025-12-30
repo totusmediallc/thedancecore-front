@@ -3,19 +3,25 @@ import CIcon from '@coreui/icons-react'
 import {
   cilBell,
   cilCalculator,
+  cilCalendar,
   cilChartPie,
   cilCursor,
   cilDescription,
   cilDrop,
   cilExternalLink,
+  cilLockLocked,
   cilNotes,
   cilPencil,
+  cilPeople,
   cilPuzzle,
+  cilShieldAlt,
   cilSpeedometer,
   cilStar,
   cilUser,
 } from '@coreui/icons'
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
+
+import { PERMISSIONS, USER_ROLES } from './config/permissions'
 
 const SHOW_TEMPLATE_SECTIONS = false
 
@@ -503,33 +509,78 @@ const _nav = [
     name: 'Dashboard',
     to: '/dashboard',
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
+    permission: PERMISSIONS.DASHBOARD_VIEW,
     badge: {
       color: 'info',
       text: 'NEW',
     },
   },
   {
+    component: CNavItem,
+    name: 'Eventos',
+    to: '/events',
+    icon: <CIcon icon={cilCalendar} customClassName="nav-icon" />,
+    permission: PERMISSIONS.EVENTS_READ,
+  },
+  {
     component: CNavGroup,
     name: 'Gestión',
     to: '/gestion',
     icon: <CIcon icon={cilPuzzle} customClassName="nav-icon" />,
+    permission: [PERMISSIONS.ACADEMIES_READ, PERMISSIONS.DANCERS_READ, PERMISSIONS.COACHES_READ],
     items: [
       {
         component: CNavItem,
         name: 'Academias',
         to: '/gestion/academias',
+        permission: PERMISSIONS.ACADEMIES_READ,
       },
       {
         component: CNavItem,
         name: 'Géneros',
         to: '/gestion/generos',
+        permission: PERMISSIONS.CATALOGS_MANAGE,
+        roles: [USER_ROLES.ADMIN],
       },
       {
         component: CNavItem,
         name: 'Categorías',
         to: '/gestion/categorias',
+        permission: PERMISSIONS.CATALOGS_MANAGE,
+        roles: [USER_ROLES.ADMIN],
       },
     ],
+  },
+  {
+    component: CNavTitle,
+    name: 'Administración',
+    roles: [USER_ROLES.ADMIN],
+  },
+  {
+    component: CNavGroup,
+    name: 'Usuarios',
+    to: '/admin/usuarios',
+    icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
+    roles: [USER_ROLES.ADMIN],
+    permission: PERMISSIONS.USERS_READ,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Lista de Usuarios',
+        to: '/admin/usuarios',
+        permission: PERMISSIONS.USERS_READ,
+      },
+      {
+        component: CNavItem,
+        name: 'Permisos',
+        to: '/admin/permisos',
+        permission: PERMISSIONS.USERS_MANAGE_PERMISSIONS,
+      },
+    ],
+  },
+  {
+    component: CNavTitle,
+    name: 'Configuraciones',
   },
   {
     component: CNavGroup,
@@ -541,15 +592,18 @@ const _nav = [
         component: CNavItem,
         name: 'Usuarios',
         to: '/configuraciones/usuarios',
+        permission: PERMISSIONS.USERS_READ,
+        roles: [USER_ROLES.ADMIN],
       },
       {
         component: CNavItem,
         name: 'Opciones',
         to: '/configuraciones/opciones',
+        roles: [USER_ROLES.ADMIN],
       },
       {
         component: CNavItem,
-        name: 'Perfil',
+        name: 'Mi Perfil',
         to: '/configuraciones/perfil',
       },
     ],

@@ -9,12 +9,10 @@ import {
   CSidebarHeader,
   CSidebarToggler,
 } from '@coreui/react'
-import CIcon from '@coreui/icons-react'
 
 import { AppSidebarNav } from './AppSidebarNav'
 
-import { logo } from 'src/assets/brand/logo'
-import { sygnet } from 'src/assets/brand/sygnet'
+import tdcLogo from 'src/assets/images/tdc01.png'
 
 // sidebar nav config
 import navigation from '../_nav'
@@ -36,9 +34,12 @@ const AppSidebar = () => {
       }}
     >
       <CSidebarHeader className="border-bottom">
-        <CSidebarBrand to="/">
-          <CIcon customClassName="sidebar-brand-full" icon={logo} height={32} />
-          <CIcon customClassName="sidebar-brand-narrow" icon={sygnet} height={32} />
+        <CSidebarBrand
+          to="/"
+          className="d-flex w-100 justify-content-center align-items-center"
+        >
+          <img className="sidebar-brand-full" src={tdcLogo} height={32} alt="The Dance Core" />
+          <img className="sidebar-brand-narrow" src={tdcLogo} height={32} alt="The Dance Core" />
         </CSidebarBrand>
         <CCloseButton
           className="d-lg-none"

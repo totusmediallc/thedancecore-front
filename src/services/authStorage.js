@@ -44,12 +44,20 @@ export const saveSessionPayload = (payload) => {
     return null
   }
 
-  const { accessToken, refreshToken, user, tokenType, expiresIn } = payload
+  const { accessToken, refreshToken, user, permissions, tokenType, expiresIn } = payload
   const accessTokenExpiresAt = getJwtExpiration(accessToken)
   const refreshTokenExpiresAt = getJwtExpiration(refreshToken)
 
+  // Asegurar que los permisos estén disponibles en el objeto user
+  const userWithPermissions = user
+    ? {
+        ...user,
+        permissions: user.permissions || permissions || [],
+      }
+    : null
+
   const session = {
-    user,
+    user: userWithPermissions,
     accessToken,
     refreshToken,
     accessTokenExpiresAt,

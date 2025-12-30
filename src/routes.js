@@ -4,11 +4,18 @@ const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const Colors = React.lazy(() => import('./views/theme/colors/Colors'))
 const Typography = React.lazy(() => import('./views/theme/typography/Typography'))
 
+const EventsManagement = React.lazy(() => import('./views/events/Events'))
+
 // Gestión (renombrado desde "academias")
 const GestionAcademias = React.lazy(() => import('./views/gestion/Academias'))
 const GestionCompetidores = React.lazy(() => import('./views/gestion/Competidores'))
 const GestionGeneros = React.lazy(() => import('./views/gestion/Generos'))
 const GestionCategorias = React.lazy(() => import('./views/gestion/Categorias'))
+
+// Admin - Usuarios y Permisos
+const AdminUsersManagement = React.lazy(() => import('./views/admin/usuarios/AdminUsersManagement'))
+const PermissionsManagement = React.lazy(() => import('./views/admin/permisos/PermissionsManagement'))
+const UserPermissionsManager = React.lazy(() => import('./views/admin/permisos/UserPermissionsManager'))
 
 // Configuraciones
 const ConfigUsuarios = React.lazy(() => import('./views/configuraciones/Usuarios'))
@@ -67,12 +74,17 @@ const UsersManagement = React.lazy(() => import('./views/configuraciones/usuario
 const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
+  { path: '/events', name: 'Eventos', element: EventsManagement },
   // Gestión
   { path: '/gestion', name: 'Gestión', element: GestionAcademias, exact: true },
   { path: '/gestion/academias', name: 'Academias', element: GestionAcademias },
   { path: '/gestion/competidores', name: 'Competidores', element: GestionCompetidores },
   { path: '/gestion/generos', name: 'Géneros', element: GestionGeneros },
   { path: '/gestion/categorias', name: 'Categorías', element: GestionCategorias },
+  // Admin - Usuarios y Permisos
+  { path: '/admin/usuarios', name: 'Usuarios', element: AdminUsersManagement },
+  { path: '/admin/permisos', name: 'Permisos', element: PermissionsManagement, exact: true },
+  { path: '/admin/permisos/usuario/:userId', name: 'Permisos de Usuario', element: UserPermissionsManager },
   // Configuraciones
   { path: '/configuraciones', name: 'Configuraciones', element: ConfigUsuarios, exact: true },
   { path: '/configuraciones/usuarios', name: 'Usuarios', element: UsersManagement },
