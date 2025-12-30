@@ -29,6 +29,8 @@ import {
 import { usePermissions } from '../../hooks/usePermissions'
 import { listAcademies } from '../../services/academiesApi'
 import { getRegistrationSummary } from '../../services/academyEventRegistrationApi'
+import { getEventAcademyChoreographies } from '../../services/choreographiesApi'
+import { getChoreographyDancers } from '../../services/choreographyDancersApi'
 import { listDancers } from '../../services/dancersApi'
 import {
   acceptEventInvitation,
@@ -74,6 +76,7 @@ const AcademyEventRegistration = () => {
 
   // Datos del registro
   const [summaryData, setSummaryData] = useState(null)
+  const [choreographies, setChoreographies] = useState([])
   const [dancers, setDancers] = useState([])
 
   // Tab activa
@@ -119,14 +122,36 @@ const AcademyEventRegistration = () => {
     setError(null)
 
     try {
-      // Cargar resumen de registro y bailarines en paralelo
-      const [summaryResponse, dancersResponse] = await Promise.all([
+      // Cargar resumen, coreografías y bailarines en paralelo
+      const [summaryResponse, choreographiesResponse, dancersResponse] = await Promise.all([
         getRegistrationSummary(eventId, effectiveAcademyId),
+        getEventAcademyChoreographies(eventId, effectiveAcademyId),
         listDancers({ academyId: effectiveAcademyId, limit: 500 }),
       ])
 
       setSummaryData(summaryResponse)
       setDancers(dancersResponse?.data || dancersResponse || [])
+      
+      // Las coreografías pueden venir como array directo o con .data
+      const rawChoreographies = choreographiesResponse?.data || choreographiesResponse || []
+      
+      // Enriquecer cada coreografía con sus bailarines asignados
+      // El backend no incluye los bailarines en la respuesta de coreografías
+      const enrichedChoreographies = await Promise.all(
+        rawChoreographies.map(async (choreo) => {
+          try {
+            const dancersData = await getChoreographyDancers(choreo.id)
+            // La respuesta puede ser un array directo o tener .data
+            const choreoDancers = dancersData?.data || dancersData || []
+            return { ...choreo, dancers: choreoDancers }
+          } catch (err) {
+            console.warn(`Error loading dancers for choreography ${choreo.id}:`, err)
+            return { ...choreo, dancers: [] }
+          }
+        })
+      )
+      
+      setChoreographies(enrichedChoreographies)
     } catch (err) {
       console.error('Error loading data:', err)
       setError(getErrorMessage(err, 'Error al cargar los datos del registro'))
@@ -247,7 +272,7 @@ const AcademyEventRegistration = () => {
   const event = summaryData?.event
   const registration = summaryData?.registration
   const stats = summaryData?.stats
-  const choreographies = summaryData?.choreographies || []
+  // choreographies viene del estado separado, no del summary
   const coaches = summaryData?.coaches || []
   const order = summaryData?.order
 

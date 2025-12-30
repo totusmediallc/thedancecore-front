@@ -54,7 +54,15 @@ import {
   bulkAssignDancersToChoreography,
   removeDancerFromChoreography,
 } from '../../../services/choreographyDancersApi'
+import { createDancer } from '../../../services/dancersApi'
 import { HttpError } from '../../../services/httpClient'
+
+// Validación simple de CURP
+const validateCurp = (curp) => {
+  if (!curp) return false
+  const curpRegex = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/i
+  return curpRegex.test(curp)
+}
 
 const getErrorMessage = (error, fallback = 'Ocurrió un error inesperado') => {
   if (!error) return fallback
@@ -98,6 +106,21 @@ const ChoreographiesSection = ({
 
   // Bailarines seleccionados para la coreografía (en modal crear/editar)
   const [formSelectedDancers, setFormSelectedDancers] = useState([])
+
+  // Estado para filtro de bailarines
+  const [dancerSearchTerm, setDancerSearchTerm] = useState('')
+
+  // Estado para registro inline de nuevo bailarín
+  const [showNewDancerForm, setShowNewDancerForm] = useState(false)
+  const [newDancerData, setNewDancerData] = useState({
+    name: '',
+    curp: '',
+    birthDate: '',
+    email: '',
+    phone: '',
+  })
+  const [savingNewDancer, setSavingNewDancer] = useState(false)
+  const [newDancerError, setNewDancerError] = useState(null)
 
   // Estado para asignación de bailarines
   const [showDancersModal, setShowDancersModal] = useState(false)
@@ -145,6 +168,10 @@ const ChoreographiesSection = ({
       musicGenreId: '',
     })
     setFormSelectedDancers([])
+    setDancerSearchTerm('')
+    setShowNewDancerForm(false)
+    setNewDancerData({ name: '', curp: '', birthDate: '', email: '', phone: '' })
+    setNewDancerError(null)
     setSelectedChoreography(null)
     setError(null)
   }, [])
@@ -195,6 +222,71 @@ const ChoreographiesSection = ({
       return [...prev, dancerId]
     })
   }, [])
+
+  // Filtrar bailarines por término de búsqueda
+  const filteredDancers = useMemo(() => {
+    if (!dancers || dancers.length === 0) return []
+    if (!dancerSearchTerm.trim()) return dancers
+    
+    const term = dancerSearchTerm.toLowerCase().trim()
+    return dancers.filter((dancer) => {
+      const name = (dancer.name || '').toLowerCase()
+      const curp = (dancer.curp || '').toLowerCase()
+      return name.includes(term) || curp.includes(term)
+    })
+  }, [dancers, dancerSearchTerm])
+
+  // Manejar cambios en formulario de nuevo bailarín
+  const handleNewDancerChange = useCallback((e) => {
+    const { name, value } = e.target
+    setNewDancerData((prev) => ({ ...prev, [name]: value }))
+  }, [])
+
+  // Guardar nuevo bailarín inline
+  const handleSaveNewDancer = useCallback(async () => {
+    if (!newDancerData.name || !newDancerData.curp || !newDancerData.birthDate) {
+      setNewDancerError('Nombre, CURP y fecha de nacimiento son obligatorios')
+      return
+    }
+
+    if (!validateCurp(newDancerData.curp)) {
+      setNewDancerError('El CURP no tiene un formato válido')
+      return
+    }
+
+    setSavingNewDancer(true)
+    setNewDancerError(null)
+
+    try {
+      const payload = {
+        name: newDancerData.name,
+        curp: newDancerData.curp.toUpperCase(),
+        birthDate: newDancerData.birthDate,
+        academyId,
+        ...(newDancerData.email && { email: newDancerData.email }),
+        ...(newDancerData.phone && { phone: newDancerData.phone }),
+      }
+
+      const response = await createDancer(payload)
+      const newDancer = response?.dancer || response
+
+      // Agregar el nuevo bailarín a la selección
+      if (newDancer?.id) {
+        setFormSelectedDancers((prev) => [...prev, newDancer.id])
+      }
+
+      // Limpiar el formulario y ocultarlo
+      setNewDancerData({ name: '', curp: '', birthDate: '', email: '', phone: '' })
+      setShowNewDancerForm(false)
+
+      // Refrescar la lista de bailarines
+      onRefresh?.()
+    } catch (err) {
+      setNewDancerError(getErrorMessage(err, 'Error al registrar el bailarín'))
+    } finally {
+      setSavingNewDancer(false)
+    }
+  }, [newDancerData, academyId, onRefresh])
 
   // Guardar coreografía
   const handleSubmit = async (e) => {
@@ -574,19 +666,142 @@ const ChoreographiesSection = ({
 
               {/* Sección de selección de bailarines */}
               <CCol md={12}>
-                <CFormLabel>
-                  <CIcon icon={cilUser} className="me-1" />
-                  Bailarines participantes
-                </CFormLabel>
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <CFormLabel className="mb-0">
+                    <CIcon icon={cilUser} className="me-1" />
+                    Bailarines participantes
+                  </CFormLabel>
+                  {!showNewDancerForm && (
+                    <CButton 
+                      color="success" 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setShowNewDancerForm(true)}
+                    >
+                      <CIcon icon={cilPlus} className="me-1" />
+                      Nuevo bailarín
+                    </CButton>
+                  )}
+                </div>
+
+                {/* Formulario inline para nuevo bailarín */}
+                {showNewDancerForm && (
+                  <CCard className="mb-3 border-success">
+                    <CCardBody className="p-3">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <strong className="text-success">
+                          <CIcon icon={cilPlus} className="me-1" />
+                          Registrar nuevo bailarín
+                        </strong>
+                        <CButton 
+                          color="secondary" 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => {
+                            setShowNewDancerForm(false)
+                            setNewDancerError(null)
+                            setNewDancerData({ name: '', curp: '', birthDate: '', email: '', phone: '' })
+                          }}
+                        >
+                          Cancelar
+                        </CButton>
+                      </div>
+                      
+                      {newDancerError && (
+                        <CAlert color="danger" className="py-2 small mb-2">
+                          {newDancerError}
+                        </CAlert>
+                      )}
+                      
+                      <CRow className="g-2">
+                        <CCol md={6}>
+                          <CFormInput
+                            size="sm"
+                            placeholder="Nombre completo *"
+                            name="name"
+                            value={newDancerData.name}
+                            onChange={handleNewDancerChange}
+                          />
+                        </CCol>
+                        <CCol md={6}>
+                          <CFormInput
+                            size="sm"
+                            placeholder="CURP *"
+                            name="curp"
+                            value={newDancerData.curp}
+                            onChange={handleNewDancerChange}
+                            maxLength={18}
+                            style={{ textTransform: 'uppercase' }}
+                          />
+                        </CCol>
+                        <CCol md={4}>
+                          <CFormInput
+                            size="sm"
+                            type="date"
+                            placeholder="Fecha nacimiento *"
+                            name="birthDate"
+                            value={newDancerData.birthDate}
+                            onChange={handleNewDancerChange}
+                          />
+                        </CCol>
+                        <CCol md={4}>
+                          <CFormInput
+                            size="sm"
+                            type="email"
+                            placeholder="Email (opcional)"
+                            name="email"
+                            value={newDancerData.email}
+                            onChange={handleNewDancerChange}
+                          />
+                        </CCol>
+                        <CCol md={4}>
+                          <CFormInput
+                            size="sm"
+                            placeholder="Teléfono (opcional)"
+                            name="phone"
+                            value={newDancerData.phone}
+                            onChange={handleNewDancerChange}
+                          />
+                        </CCol>
+                        <CCol md={12}>
+                          <CButton 
+                            color="success" 
+                            size="sm"
+                            onClick={handleSaveNewDancer}
+                            disabled={savingNewDancer}
+                          >
+                            {savingNewDancer && <CSpinner size="sm" className="me-1" />}
+                            Registrar y seleccionar
+                          </CButton>
+                        </CCol>
+                      </CRow>
+                    </CCardBody>
+                  </CCard>
+                )}
+
+                {/* Buscador de bailarines */}
+                <CFormInput
+                  type="search"
+                  placeholder="Buscar por nombre o CURP..."
+                  value={dancerSearchTerm}
+                  onChange={(e) => setDancerSearchTerm(e.target.value)}
+                  className="mb-2"
+                />
+
                 {(!dancers || dancers.length === 0) ? (
                   <CAlert color="info" className="mb-0">
                     No hay bailarines registrados en la academia.
-                    Primero agrega bailarines en la pestaña "Bailarines".
+                    Usa el botón "Nuevo bailarín" para registrar uno.
+                  </CAlert>
+                ) : filteredDancers.length === 0 ? (
+                  <CAlert color="warning" className="mb-0">
+                    No se encontraron bailarines con "{dancerSearchTerm}".
+                    Usa el botón "Nuevo bailarín" para registrar uno nuevo.
                   </CAlert>
                 ) : (
                   <>
                     <div className="border rounded p-3" style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                      {dancers.map((dancer) => (
+                      {filteredDancers.map((dancer) => (
                         <div 
                           key={dancer.id}
                           className={`d-flex align-items-center p-2 rounded mb-1 cursor-pointer ${
@@ -612,6 +827,7 @@ const ChoreographiesSection = ({
                     </div>
                     <small className="text-body-secondary mt-2 d-block">
                       <strong>{formSelectedDancers.length}</strong> bailarines seleccionados
+                      {dancerSearchTerm && ` (mostrando ${filteredDancers.length} de ${dancers.length})`}
                     </small>
                   </>
                 )}

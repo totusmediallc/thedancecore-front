@@ -15,6 +15,28 @@ El módulo está diseñado para funcionar tanto para **usuarios de academia** co
 
 ---
 
+## 📝 Changelog
+
+### v1.4.1 - 30/12/2024
+- **Enriquecimiento de coreografías con bailarines**: El endpoint de coreografías no devuelve los bailarines asignados, ahora se enriquece cada coreografía con una llamada adicional a `getChoreographyDancers()`
+- **AcademyEventRegistration.jsx**:
+  - Importación de `getChoreographyDancers` de choreographyDancersApi
+  - Después de cargar coreografías, se hace `Promise.all` para cargar bailarines de cada una
+  - Las coreografías ahora incluyen el array `dancers` correctamente poblado
+- **Esto corrige**: Bailarines no visibles en coreografías y en pestaña Bailarines
+
+### v1.4.0 - 30/12/2024
+- **Carga separada de coreografías**: El endpoint `/summary` no incluye el array de coreografías, ahora se cargan por separado con `getEventAcademyChoreographies()`
+- **Modal de coreografía mejorado**:
+  - **Filtro de búsqueda de bailarines**: Buscar por nombre o CURP
+  - **Registro inline de bailarín**: Botón "Nuevo bailarín" permite registrar sin salir del modal
+  - El nuevo bailarín se selecciona automáticamente tras registrarse
+- **AcademyEventRegistration.jsx**:
+  - Estado separado `choreographies` para las coreografías cargadas del API
+  - Llamada paralela a `getEventAcademyChoreographies` en `loadData()`
+
+---
+
 ## 🏗️ Arquitectura del Módulo
 
 ### Estructura de Archivos
