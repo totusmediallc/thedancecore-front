@@ -14,6 +14,7 @@ import {
   cilArrowRight,
   cilEnvelopeClosed,
   cilCheckAlt,
+  cilFilterX,
 } from '@coreui/icons'
 import {
   CAlert,
@@ -23,6 +24,7 @@ import {
   CCol,
   CFormInput,
   CFormSelect,
+  CFormLabel,
   CInputGroup,
   CInputGroupText,
   CListGroup,
@@ -95,6 +97,8 @@ const AssignAcademiesPanel = ({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
+  const [stateFilter, setStateFilter] = useState('')
+  const [municipalityFilter, setMunicipalityFilter] = useState('')
   const [selectedIds, setSelectedIds] = useState([])
 
   useEffect(() => {
@@ -115,20 +119,89 @@ const AssignAcademiesPanel = ({
     loadAcademies()
   }, [])
 
+  // Generar opciones de filtro de estados desde las academias cargadas
+  const stateFilterOptions = useMemo(() => {
+    const map = new Map()
+    academies.forEach((academy) => {
+      const state = academy.colony?.municipality?.state
+      if (!state?.id) return
+      const key = String(state.id)
+      if (!map.has(key)) {
+        map.set(key, state.name ?? `Estado ${state.id}`)
+      }
+    })
+    const options = Array.from(map.entries())
+      .sort(([, labelA], [, labelB]) => labelA.localeCompare(labelB, 'es'))
+      .map(([value, label]) => ({ value, label }))
+    return [{ value: '', label: 'Todos los estados' }, ...options]
+  }, [academies])
+
+  // Generar opciones de filtro de municipios (dependiente del estado seleccionado)
+  const municipalityFilterOptions = useMemo(() => {
+    const map = new Map()
+    academies.forEach((academy) => {
+      const municipality = academy.colony?.municipality
+      const state = municipality?.state
+      if (!municipality?.id || !state?.id) return
+      const stateId = String(state.id)
+      // Solo mostrar municipios del estado seleccionado
+      if (stateFilter && stateId !== stateFilter) return
+      const key = String(municipality.id)
+      if (!map.has(key)) {
+        map.set(key, {
+          label: municipality.name ?? `Municipio ${municipality.id}`,
+          stateName: state.name ?? `Estado ${state.id}`,
+        })
+      }
+    })
+    const options = Array.from(map.entries())
+      .sort(([, a], [, b]) => a.label.localeCompare(b.label, 'es'))
+      .map(([value, data]) => ({
+        value,
+        label: stateFilter ? data.label : `${data.label} (${data.stateName})`,
+      }))
+    return [{ value: '', label: 'Todos los municipios' }, ...options]
+  }, [academies, stateFilter])
+
+  // Limpiar municipio si cambia el estado
+  useEffect(() => {
+    setMunicipalityFilter('')
+  }, [stateFilter])
+
   const availableAcademies = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
     return academies
       .filter((academy) => !assignedAcademyIds.has(academy.id))
       .filter((academy) => {
-        if (!normalizedSearch) return true
-        const haystack = [academy.name, academy.mail, academy.contactPhoneNumber]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
-        return haystack.includes(normalizedSearch)
+        // Filtro por estado
+        if (stateFilter) {
+          const stateId = String(academy.colony?.municipality?.state?.id ?? '')
+          if (stateId !== stateFilter) return false
+        }
+        // Filtro por municipio
+        if (municipalityFilter) {
+          const municipalityId = String(academy.colony?.municipality?.id ?? '')
+          if (municipalityId !== municipalityFilter) return false
+        }
+        // Filtro por búsqueda de texto
+        if (normalizedSearch) {
+          const haystack = [
+            academy.name,
+            academy.mail,
+            academy.contactPhoneNumber,
+            academy.colony?.name,
+            academy.colony?.municipality?.name,
+            academy.colony?.municipality?.state?.name,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+          return haystack.includes(normalizedSearch)
+        }
+        return true
       })
       .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'es'))
-  }, [academies, assignedAcademyIds, search])
+  }, [academies, assignedAcademyIds, search, stateFilter, municipalityFilter])
 
   const handleToggle = (academyId) => {
     setSelectedIds((prev) =>
@@ -154,6 +227,14 @@ const AssignAcademiesPanel = ({
     setSelectedIds([])
   }
 
+  const handleClearFilters = () => {
+    setSearch('')
+    setStateFilter('')
+    setMunicipalityFilter('')
+  }
+
+  const hasActiveFilters = search || stateFilter || municipalityFilter
+
   if (loading) {
     return (
       <div className="d-flex justify-content-center py-4">
@@ -173,21 +254,77 @@ const AssignAcademiesPanel = ({
         Invitar Academias
       </h6>
 
-      <CInputGroup className="mb-3">
-        <CInputGroupText>
-          <CIcon icon={cilSearch} />
-        </CInputGroupText>
-        <CFormInput
-          placeholder="Buscar academias disponibles..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </CInputGroup>
+      {/* Filtros */}
+      <CRow className="g-2 mb-3">
+        <CCol xs={12} md={4}>
+          <CFormLabel className="small text-uppercase fw-semibold text-body-secondary mb-1">
+            Estado
+          </CFormLabel>
+          <CFormSelect
+            size="sm"
+            value={stateFilter}
+            onChange={(e) => setStateFilter(e.target.value)}
+          >
+            {stateFilterOptions.map((opt) => (
+              <option key={opt.value || 'all'} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </CFormSelect>
+        </CCol>
+        <CCol xs={12} md={4}>
+          <CFormLabel className="small text-uppercase fw-semibold text-body-secondary mb-1">
+            Municipio
+          </CFormLabel>
+          <CFormSelect
+            size="sm"
+            value={municipalityFilter}
+            onChange={(e) => setMunicipalityFilter(e.target.value)}
+            disabled={municipalityFilterOptions.length <= 1}
+          >
+            {municipalityFilterOptions.map((opt) => (
+              <option key={opt.value || 'all'} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </CFormSelect>
+        </CCol>
+        <CCol xs={12} md={4}>
+          <CFormLabel className="small text-uppercase fw-semibold text-body-secondary mb-1">
+            Buscar
+          </CFormLabel>
+          <CInputGroup size="sm">
+            <CInputGroupText>
+              <CIcon icon={cilSearch} />
+            </CInputGroupText>
+            <CFormInput
+              placeholder="Nombre, correo, teléfono..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </CInputGroup>
+        </CCol>
+      </CRow>
+
+      {/* Botón limpiar filtros */}
+      {hasActiveFilters && (
+        <div className="mb-3">
+          <CButton
+            color="secondary"
+            variant="ghost"
+            size="sm"
+            onClick={handleClearFilters}
+          >
+            <CIcon icon={cilFilterX} className="me-1" />
+            Limpiar filtros
+          </CButton>
+        </div>
+      )}
 
       {availableAcademies.length === 0 ? (
         <CAlert color="info" className="mb-0">
-          {search
-            ? 'No se encontraron academias con ese criterio'
+          {hasActiveFilters
+            ? 'No se encontraron academias con los filtros aplicados'
             : 'Todas las academias ya están invitadas'}
         </CAlert>
       ) : (
@@ -195,6 +332,7 @@ const AssignAcademiesPanel = ({
           <div className="d-flex justify-content-between align-items-center mb-2">
             <small className="text-body-secondary">
               {availableAcademies.length} academia(s) disponible(s)
+              {hasActiveFilters && ' (filtradas)'}
             </small>
             <CButton
               color="link"
@@ -210,11 +348,15 @@ const AssignAcademiesPanel = ({
 
           <div
             className="border rounded mb-3 overflow-auto"
-            style={{ maxHeight: '200px' }}
+            style={{ maxHeight: '250px' }}
           >
             <CListGroup flush>
               {availableAcademies.map((academy) => {
                 const isSelected = selectedIds.includes(academy.id)
+                const location = [
+                  academy.colony?.municipality?.name,
+                  academy.colony?.municipality?.state?.name,
+                ].filter(Boolean).join(', ')
                 return (
                   <CListGroupItem
                     key={academy.id}
@@ -231,7 +373,10 @@ const AssignAcademiesPanel = ({
                     />
                     <div className="flex-grow-1">
                       <div className="fw-medium">{academy.name}</div>
-                      <small className="text-body-secondary">{academy.mail}</small>
+                      <small className="text-body-secondary">
+                        {academy.mail}
+                        {location && <span className="ms-2">• {location}</span>}
+                      </small>
                     </div>
                   </CListGroupItem>
                 )
@@ -507,186 +652,182 @@ const EventAcademiesModal = ({
           ))}
         </div>
 
-        <CRow className="g-4">
-          {/* Panel izquierdo: Lista de academias asignadas */}
-          <CCol lg={7}>
-            <div className="border rounded p-3">
-              <h6 className="mb-3">Academias Invitadas</h6>
+        {/* Panel de Invitar Academias - Primero y ancho completo */}
+        {isAdmin && (
+          <div className="mb-4">
+            <AssignAcademiesPanel
+              event={event}
+              assignedAcademyIds={assignedAcademyIds}
+              onAssign={handleAssign}
+              isSubmitting={assignSubmitting}
+            />
+          </div>
+        )}
 
-              <CRow className="g-2 mb-3">
-                <CCol sm={7}>
-                  <CInputGroup size="sm">
-                    <CInputGroupText>
-                      <CIcon icon={cilSearch} />
-                    </CInputGroupText>
-                    <CFormInput
-                      placeholder="Buscar academia..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                  </CInputGroup>
-                </CCol>
-                <CCol sm={5}>
-                  <CFormSelect
-                    size="sm"
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                  >
-                    {STATUS_FILTER_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </CFormSelect>
-                </CCol>
-              </CRow>
+        {/* Lista de academias invitadas */}
+        <div className="border rounded p-3">
+          <h6 className="mb-3">Academias Invitadas</h6>
 
-              {loading ? (
-                <div className="d-flex justify-content-center py-4">
-                  <CSpinner color="primary" />
-                </div>
-              ) : error ? (
-                <CAlert color="danger">{error}</CAlert>
-              ) : filteredAcademies.length === 0 ? (
-                <CAlert color="info" className="mb-0">
-                  {eventAcademies.length === 0
-                    ? 'No hay academias invitadas a este evento'
-                    : 'No se encontraron academias con los filtros aplicados'}
-                </CAlert>
-              ) : (
-                <div
-                  className="border rounded overflow-auto"
-                  style={{ maxHeight: '400px' }}
-                >
-                  <CListGroup flush>
-                    {filteredAcademies.map((ea) => {
-                      const academy = ea.academy || {}
-                      const status = REGISTRATION_STATUS[ea.status] || REGISTRATION_STATUS.invited
-                      const academyId = ea.academyId || academy.id
-                      const isRemoving = removingId === academyId
-                      const isValidating = validatingId === academyId
-
-                      return (
-                        <CListGroupItem
-                          key={academyId}
-                          className="d-flex flex-column gap-2"
-                        >
-                          <div className="d-flex align-items-center justify-content-between">
-                            <div className="d-flex align-items-center gap-2">
-                              <CBadge color={status.color} shape="rounded-pill">
-                                <CIcon icon={status.icon} size="sm" className="me-1" />
-                                {status.label}
-                              </CBadge>
-                              <div>
-                                <div className="fw-medium">{academy.name || 'Sin nombre'}</div>
-                                <small className="text-body-secondary">
-                                  {academy.mail || 'Sin correo'}
-                                </small>
-                              </div>
-                            </div>
-
-                            {isAdmin && (
-                              <CButtonGroup size="sm">
-                                {/* Ver registro */}
-                                <CTooltip content="Ver registro">
-                                  <CButton
-                                    color="primary"
-                                    variant="ghost"
-                                    onClick={() => handleViewRegistration(academyId)}
-                                  >
-                                    <CIcon icon={cilArrowRight} />
-                                  </CButton>
-                                </CTooltip>
-
-                                {/* Validar registro (solo si status es 'registered') */}
-                                {ea.status === 'registered' && (
-                                  <CTooltip content="Validar registro">
-                                    <CButton
-                                      color="success"
-                                      variant="ghost"
-                                      disabled={isValidating}
-                                      onClick={() => handleValidate(academyId)}
-                                    >
-                                      {isValidating ? (
-                                        <CSpinner size="sm" />
-                                      ) : (
-                                        <CIcon icon={cilCheckCircle} />
-                                      )}
-                                    </CButton>
-                                  </CTooltip>
-                                )}
-
-                                {/* Cancelar invitación (solo si status es 'invited') */}
-                                {ea.status === 'invited' && (
-                                  <CTooltip content="Cancelar invitación">
-                                    <CButton
-                                      color="danger"
-                                      variant="ghost"
-                                      disabled={isRemoving}
-                                      onClick={() => handleRemove(academyId)}
-                                    >
-                                      {isRemoving ? (
-                                        <CSpinner size="sm" />
-                                      ) : (
-                                        <CIcon icon={cilTrash} />
-                                      )}
-                                    </CButton>
-                                  </CTooltip>
-                                )}
-                              </CButtonGroup>
-                            )}
-                          </div>
-
-                          {/* Info adicional si hay */}
-                          {(ea.registeredAt || ea.acceptedAt) && (
-                            <div className="d-flex gap-3 text-body-secondary small">
-                              {ea.acceptedAt && (
-                                <span>
-                                  Aceptado: {new Date(ea.acceptedAt).toLocaleDateString('es-MX')}
-                                </span>
-                              )}
-                              {ea.registeredAt && (
-                                <span>
-                                  Registrado: {new Date(ea.registeredAt).toLocaleDateString('es-MX')}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </CListGroupItem>
-                      )
-                    })}
-                  </CListGroup>
-                </div>
-              )}
-
-              {!loading && (
-                <div className="d-flex justify-content-end mt-3">
-                  <CButton
-                    color="secondary"
-                    variant="ghost"
-                    size="sm"
-                    onClick={loadEventAcademies}
-                  >
-                    <CIcon icon={cilReload} className="me-1" />
-                    Actualizar
-                  </CButton>
-                </div>
-              )}
-            </div>
-          </CCol>
-
-          {/* Panel derecho: Asignar nuevas academias */}
-          {isAdmin && (
-            <CCol lg={5}>
-              <AssignAcademiesPanel
-                event={event}
-                assignedAcademyIds={assignedAcademyIds}
-                onAssign={handleAssign}
-                isSubmitting={assignSubmitting}
-              />
+          <CRow className="g-2 mb-3">
+            <CCol sm={7}>
+              <CInputGroup size="sm">
+                <CInputGroupText>
+                  <CIcon icon={cilSearch} />
+                </CInputGroupText>
+                <CFormInput
+                  placeholder="Buscar academia..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </CInputGroup>
             </CCol>
+            <CCol sm={5}>
+              <CFormSelect
+                size="sm"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                {STATUS_FILTER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </CFormSelect>
+            </CCol>
+          </CRow>
+
+          {loading ? (
+            <div className="d-flex justify-content-center py-4">
+              <CSpinner color="primary" />
+            </div>
+          ) : error ? (
+            <CAlert color="danger">{error}</CAlert>
+          ) : filteredAcademies.length === 0 ? (
+            <CAlert color="info" className="mb-0">
+              {eventAcademies.length === 0
+                ? 'No hay academias invitadas a este evento'
+                : 'No se encontraron academias con los filtros aplicados'}
+            </CAlert>
+          ) : (
+            <div
+              className="border rounded overflow-auto"
+              style={{ maxHeight: '400px' }}
+            >
+              <CListGroup flush>
+                {filteredAcademies.map((ea) => {
+                  const academy = ea.academy || {}
+                  const status = REGISTRATION_STATUS[ea.status] || REGISTRATION_STATUS.invited
+                  const academyId = ea.academyId || academy.id
+                  const isRemoving = removingId === academyId
+                  const isValidating = validatingId === academyId
+
+                  return (
+                    <CListGroupItem
+                      key={academyId}
+                      className="d-flex flex-column gap-2"
+                    >
+                      <div className="d-flex align-items-center justify-content-between">
+                        <div className="d-flex align-items-center gap-2">
+                          <CBadge color={status.color} shape="rounded-pill">
+                            <CIcon icon={status.icon} size="sm" className="me-1" />
+                            {status.label}
+                          </CBadge>
+                          <div>
+                            <div className="fw-medium">{academy.name || 'Sin nombre'}</div>
+                            <small className="text-body-secondary">
+                              {academy.mail || 'Sin correo'}
+                            </small>
+                          </div>
+                        </div>
+
+                        {isAdmin && (
+                          <CButtonGroup size="sm">
+                            {/* Ver registro */}
+                            <CTooltip content="Ver registro">
+                              <CButton
+                                color="primary"
+                                variant="ghost"
+                                onClick={() => handleViewRegistration(academyId)}
+                              >
+                                <CIcon icon={cilArrowRight} />
+                              </CButton>
+                            </CTooltip>
+
+                            {/* Validar registro (solo si status es 'registered') */}
+                            {ea.status === 'registered' && (
+                              <CTooltip content="Validar registro">
+                                <CButton
+                                  color="success"
+                                  variant="ghost"
+                                  disabled={isValidating}
+                                  onClick={() => handleValidate(academyId)}
+                                >
+                                  {isValidating ? (
+                                    <CSpinner size="sm" />
+                                  ) : (
+                                    <CIcon icon={cilCheckCircle} />
+                                  )}
+                                </CButton>
+                              </CTooltip>
+                            )}
+
+                            {/* Cancelar invitación (solo si status es 'invited') */}
+                            {ea.status === 'invited' && (
+                              <CTooltip content="Cancelar invitación">
+                                <CButton
+                                  color="danger"
+                                  variant="ghost"
+                                  disabled={isRemoving}
+                                  onClick={() => handleRemove(academyId)}
+                                >
+                                  {isRemoving ? (
+                                    <CSpinner size="sm" />
+                                  ) : (
+                                    <CIcon icon={cilTrash} />
+                                  )}
+                                </CButton>
+                              </CTooltip>
+                            )}
+                          </CButtonGroup>
+                        )}
+                      </div>
+
+                      {/* Info adicional si hay */}
+                      {(ea.registeredAt || ea.acceptedAt) && (
+                        <div className="d-flex gap-3 text-body-secondary small">
+                          {ea.acceptedAt && (
+                            <span>
+                              Aceptado: {new Date(ea.acceptedAt).toLocaleDateString('es-MX')}
+                            </span>
+                          )}
+                          {ea.registeredAt && (
+                            <span>
+                              Registrado: {new Date(ea.registeredAt).toLocaleDateString('es-MX')}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </CListGroupItem>
+                  )
+                })}
+              </CListGroup>
+            </div>
           )}
-        </CRow>
+
+          {!loading && (
+            <div className="d-flex justify-content-end mt-3">
+              <CButton
+                color="secondary"
+                variant="ghost"
+                size="sm"
+                onClick={loadEventAcademies}
+              >
+                <CIcon icon={cilReload} className="me-1" />
+                Actualizar
+              </CButton>
+            </div>
+          )}
+        </div>
       </CModalBody>
 
       <CModalFooter className="bg-body-tertiary">
