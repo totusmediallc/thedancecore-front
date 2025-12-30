@@ -9,6 +9,8 @@ const EventsManagement = React.lazy(() => import('./views/events/Events'))
 // Academia - Panel de usuario de academia
 const AcademyEvents = React.lazy(() => import('./views/academy/AcademyEvents'))
 const AcademyEventRegistration = React.lazy(() => import('./views/academy/AcademyEventRegistration'))
+const AcademyDancers = React.lazy(() => import('./views/academy/AcademyDancers'))
+const AcademyCoaches = React.lazy(() => import('./views/academy/AcademyCoaches'))
 
 // Gestión (renombrado desde "academias")
 const GestionAcademias = React.lazy(() => import('./views/gestion/Academias'))
@@ -83,6 +85,8 @@ const routes = [
   { path: '/academy', name: 'Mi Academia', element: AcademyEvents, exact: true },
   { path: '/academy/events', name: 'Mis Eventos', element: AcademyEvents },
   { path: '/academy/events/:eventId', name: 'Registro a Evento', element: AcademyEventRegistration },
+  { path: '/academy/dancers', name: 'Mis Bailarines', element: AcademyDancers },
+  { path: '/academy/coaches', name: 'Mis Coaches', element: AcademyCoaches },
   // Gestión
   { path: '/gestion', name: 'Gestión', element: GestionAcademias, exact: true },
   { path: '/gestion/academias', name: 'Academias', element: GestionAcademias },

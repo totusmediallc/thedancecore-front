@@ -63,23 +63,17 @@ import {
 } from '../../services/academiesApi'
 
 // Constantes
-const ROLE_OPTIONS = [
-  { value: 'academy', label: 'Academia' },
-  { value: 'teacher', label: 'Profesor' },
-  { value: 'dancer', label: 'Bailarín' },
-]
+// Los usuarios de academia solo pueden tener rol 'academy'
+// Profesores y bailarines no tienen acceso al sistema
 
 const ROLE_COLORS = {
   academy: 'primary',
-  teacher: 'info',
-  dancer: 'success',
 }
 
 const LIMIT_OPTIONS = [5, 10, 25, 50]
 
 const DEFAULT_FILTERS = {
   search: '',
-  role: '',
   isActive: '',
   page: 1,
   limit: 10,
@@ -129,7 +123,7 @@ const UserFormModal = ({
             email: user.email ?? '',
             firstName: user.firstName ?? '',
             lastName: user.lastName ?? '',
-            role: user.role ?? 'dancer',
+            role: 'academy', // Los usuarios de academia siempre tienen rol 'academy'
             isActive: user.isActive ?? true,
           }
         : {
@@ -137,7 +131,7 @@ const UserFormModal = ({
             password: '',
             firstName: '',
             lastName: '',
-            role: 'dancer',
+            role: 'academy', // Los usuarios de academia siempre tienen rol 'academy'
             isActive: true,
           },
     [isEditMode, user],
@@ -177,9 +171,7 @@ const UserFormModal = ({
       validationErrors.firstName = 'El nombre es obligatorio'
     }
 
-    if (!formState.role) {
-      validationErrors.role = 'El rol es obligatorio'
-    }
+    // El rol siempre es 'academy', no necesita validación
 
     setErrors(validationErrors)
     return Object.keys(validationErrors).length === 0
@@ -274,21 +266,17 @@ const UserFormModal = ({
             </CCol>
 
             <CCol xs={12} md={6}>
-              <CFormLabel htmlFor="user-role">Rol *</CFormLabel>
+              <CFormLabel htmlFor="user-role">Rol</CFormLabel>
               <CFormSelect
                 id="user-role"
                 value={formState.role}
-                onChange={handleChange('role')}
-                invalid={Boolean(errors.role)}
-                disabled={submitting}
+                disabled
               >
-                {ROLE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
+                <option value="academy">Academia</option>
               </CFormSelect>
-              {errors.role && <div className="invalid-feedback d-block">{errors.role}</div>}
+              <small className="text-body-secondary">
+                Los usuarios de academia solo pueden tener rol "Academia"
+              </small>
             </CCol>
 
             <CCol xs={12} md={6} className="d-flex align-items-center pt-4">
@@ -579,9 +567,9 @@ const StatsCard = ({ stats, loading }) => {
           <CCol xs={6} md={3}>
             <div className="border rounded p-3 text-center">
               <div className="d-flex flex-wrap justify-content-center gap-2">
-                {stats.byRole && Object.entries(stats.byRole).map(([role, count]) => (
+                {stats.byRole && Object.entries(stats.byRole).map(([role, roleData]) => (
                   <CBadge key={role} color={ROLE_COLORS[role] ?? 'secondary'}>
-                    {role}: {count}
+                    {role}: {typeof roleData === 'object' ? (roleData.total ?? 0) : roleData}
                   </CBadge>
                 ))}
               </div>
@@ -860,20 +848,6 @@ const AcademyUsersModal = ({ visible, academy, onClose, isAdmin }) => {
             </CInputGroup>
           </CCol>
           <CCol xs={6} md={2}>
-            <CFormLabel htmlFor="users-role">Rol</CFormLabel>
-            <CFormSelect
-              id="users-role"
-              value={filters.role}
-              onChange={handleFilterChange('role')}
-              disabled={loading}
-            >
-              <option value="">Todos</option>
-              {ROLE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </CFormSelect>
-          </CCol>
-          <CCol xs={6} md={2}>
             <CFormLabel htmlFor="users-status">Estado</CFormLabel>
             <CFormSelect
               id="users-status"
@@ -948,8 +922,8 @@ const AcademyUsersModal = ({ visible, academy, onClose, isAdmin }) => {
                       </div>
                     </CTableDataCell>
                     <CTableDataCell>
-                      <CBadge color={ROLE_COLORS[user.role] ?? 'secondary'}>
-                        {ROLE_OPTIONS.find((r) => r.value === user.role)?.label ?? user.role}
+                      <CBadge color="primary">
+                        Academia
                       </CBadge>
                     </CTableDataCell>
                     <CTableDataCell>

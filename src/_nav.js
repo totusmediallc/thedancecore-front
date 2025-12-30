@@ -503,15 +503,12 @@ const templateNavItems = [
 
 const _nav = [
   {
-    component: CNavTitle,
-    name: 'TheDanceCore Menu',
-  },
-  {
     component: CNavItem,
     name: 'Dashboard',
     to: '/dashboard',
-    icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
+    icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />, 
     permission: PERMISSIONS.DASHBOARD_VIEW,
+    roles: [USER_ROLES.ADMIN],
     badge: {
       color: 'info',
       text: 'NEW',
@@ -533,6 +530,20 @@ const _nav = [
       color: 'warning',
       text: 'NUEVO',
     },
+  },
+  {
+    component: CNavItem,
+    name: 'Mis Bailarines',
+    to: '/academy/dancers',
+    icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
+    roles: [USER_ROLES.ACADEMY, USER_ROLES.TEACHER],
+  },
+  {
+    component: CNavItem,
+    name: 'Mis Coaches',
+    to: '/academy/coaches',
+    icon: <CIcon icon={cilUser} customClassName="nav-icon" />,
+    roles: [USER_ROLES.ACADEMY, USER_ROLES.TEACHER],
   },
   // Sección administrativa
   {

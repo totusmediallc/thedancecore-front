@@ -45,7 +45,7 @@ import {
   ChoreographiesSection,
   DancersSection,
   CoachesSection,
-  TshirtOrderSection,
+  TshirtRegistrationSection,
 } from './components'
 
 const getErrorMessage = (error, fallback = 'Ocurrió un error inesperado') => {
@@ -509,7 +509,7 @@ const AcademyEventRegistration = () => {
                 </CTabPane>
 
                 <CTabPane visible={activeTab === 'tshirts'}>
-                  <TshirtOrderSection
+                  <TshirtRegistrationSection
                     eventId={eventId}
                     academyId={effectiveAcademyId}
                     order={order}
