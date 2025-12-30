@@ -96,6 +96,9 @@ const ChoreographiesSection = ({
     musicGenreId: '',
   })
 
+  // Bailarines seleccionados para la coreografía (en modal crear/editar)
+  const [formSelectedDancers, setFormSelectedDancers] = useState([])
+
   // Estado para asignación de bailarines
   const [showDancersModal, setShowDancersModal] = useState(false)
   const [dancersChoreography, setDancersChoreography] = useState(null)
@@ -127,13 +130,11 @@ const ChoreographiesSection = ({
     loadCatalogs()
   }, [])
 
-  // Filtrar subcategorías por categoría seleccionada
-  const filteredSubcategories = useMemo(() => {
-    if (!formData.categoryId) return []
-    return subcategories.filter(
-      (sub) => sub.categoryId === formData.categoryId || sub.category?.id === formData.categoryId
-    )
-  }, [subcategories, formData.categoryId])
+  // Subcategorías disponibles (independientes de categoría)
+  // Las subcategorías NO dependen de la categoría, son conceptos separados
+  const availableSubcategories = useMemo(() => {
+    return subcategories || []
+  }, [subcategories])
 
   // Resetear formulario
   const resetForm = useCallback(() => {
@@ -143,6 +144,7 @@ const ChoreographiesSection = ({
       subcategoryId: '',
       musicGenreId: '',
     })
+    setFormSelectedDancers([])
     setSelectedChoreography(null)
     setError(null)
   }, [])
@@ -163,6 +165,11 @@ const ChoreographiesSection = ({
       subcategoryId: choreography.subcategoryId || choreography.subcategory?.id || '',
       musicGenreId: choreography.musicGenreId || choreography.musicGenre?.id || '',
     })
+    // Preseleccionar bailarines ya asignados
+    const assignedDancerIds = (choreography.dancers || []).map(
+      (d) => d.dancerId || d.dancer?.id || d.id
+    )
+    setFormSelectedDancers(assignedDancerIds)
     setModalMode('edit')
     setShowModal(true)
   }, [])
@@ -176,13 +183,16 @@ const ChoreographiesSection = ({
   // Manejar cambios en formulario
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target
-    setFormData((prev) => {
-      const updated = { ...prev, [name]: value }
-      // Resetear subcategoría si cambia categoría
-      if (name === 'categoryId') {
-        updated.subcategoryId = ''
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }, [])
+
+  // Toggle bailarín en formulario de coreografía
+  const toggleFormDancer = useCallback((dancerId) => {
+    setFormSelectedDancers((prev) => {
+      if (prev.includes(dancerId)) {
+        return prev.filter((id) => id !== dancerId)
       }
-      return updated
+      return [...prev, dancerId]
     })
   }, [])
 
@@ -202,10 +212,39 @@ const ChoreographiesSection = ({
         ...(formData.subcategoryId && { subcategoryId: formData.subcategoryId }),
       }
 
+      let choreographyId
+
       if (modalMode === 'create') {
-        await createChoreography(payload)
+        const created = await createChoreography(payload)
+        choreographyId = created.id
       } else {
         await updateChoreography(selectedChoreography.id, payload)
+        choreographyId = selectedChoreography.id
+      }
+
+      // Gestionar asignación de bailarines
+      if (choreographyId && formSelectedDancers.length >= 0) {
+        const currentDancerIds = modalMode === 'edit' 
+          ? (selectedChoreography.dancers || []).map(d => d.dancerId || d.dancer?.id || d.id)
+          : []
+        
+        // Bailarines a eliminar
+        const toRemove = currentDancerIds.filter(id => !formSelectedDancers.includes(id))
+        // Bailarines a agregar
+        const toAdd = formSelectedDancers.filter(id => !currentDancerIds.includes(id))
+
+        // Eliminar bailarines que ya no están seleccionados
+        for (const dancerId of toRemove) {
+          await removeDancerFromChoreography(dancerId, choreographyId)
+        }
+
+        // Agregar nuevos bailarines
+        if (toAdd.length > 0) {
+          await bulkAssignDancersToChoreography({
+            choreographyId,
+            dancerIds: toAdd,
+          })
+        }
       }
 
       handleCloseModal()
@@ -508,10 +547,10 @@ const ChoreographiesSection = ({
                   name="subcategoryId"
                   value={formData.subcategoryId}
                   onChange={handleInputChange}
-                  disabled={!formData.categoryId || filteredSubcategories.length === 0}
+                  disabled={availableSubcategories.length === 0}
                 >
                   <option value="">Sin subcategoría</option>
-                  {filteredSubcategories.map((sub) => (
+                  {availableSubcategories.map((sub) => (
                     <option key={sub.id} value={sub.id}>{sub.name}</option>
                   ))}
                 </CFormSelect>
@@ -531,6 +570,51 @@ const ChoreographiesSection = ({
                     <option key={genre.id} value={genre.id}>{genre.name}</option>
                   ))}
                 </CFormSelect>
+              </CCol>
+
+              {/* Sección de selección de bailarines */}
+              <CCol md={12}>
+                <CFormLabel>
+                  <CIcon icon={cilUser} className="me-1" />
+                  Bailarines participantes
+                </CFormLabel>
+                {(!dancers || dancers.length === 0) ? (
+                  <CAlert color="info" className="mb-0">
+                    No hay bailarines registrados en la academia.
+                    Primero agrega bailarines en la pestaña "Bailarines".
+                  </CAlert>
+                ) : (
+                  <>
+                    <div className="border rounded p-3" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                      {dancers.map((dancer) => (
+                        <div 
+                          key={dancer.id}
+                          className={`d-flex align-items-center p-2 rounded mb-1 cursor-pointer ${
+                            formSelectedDancers.includes(dancer.id) 
+                              ? 'bg-primary bg-opacity-10 border border-primary' 
+                              : 'hover-bg-light'
+                          }`}
+                          onClick={() => toggleFormDancer(dancer.id)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <CIcon 
+                            icon={formSelectedDancers.includes(dancer.id) ? cilCheckCircle : cilUser}
+                            className={`me-2 ${formSelectedDancers.includes(dancer.id) ? 'text-success' : ''}`}
+                          />
+                          <div className="flex-grow-1">
+                            <span>{dancer.name}</span>
+                            {dancer.curp && (
+                              <small className="text-body-secondary ms-2">({dancer.curp})</small>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <small className="text-body-secondary mt-2 d-block">
+                      <strong>{formSelectedDancers.length}</strong> bailarines seleccionados
+                    </small>
+                  </>
+                )}
               </CCol>
             </CRow>
           </CModalBody>

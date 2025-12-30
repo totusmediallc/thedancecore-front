@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import {
   CAlert,
@@ -28,9 +28,9 @@ import {
 import CIcon from '@coreui/icons-react'
 import {
   cilLink,
+  cilMusicNote,
   cilPencil,
   cilPlus,
-  cilTrash,
   cilUser,
   cilWarning,
   cilInfo,
@@ -79,9 +79,21 @@ const validateCurp = (curp) => {
   return curpRegex.test(curp)
 }
 
+/**
+ * DancersSection - Muestra bailarines asignados a coreografías de un evento
+ * 
+ * En el contexto de un evento, esta sección muestra:
+ * - Bailarines que están asignados a al menos una coreografía del evento
+ * - Las coreografías en las que participa cada bailarín
+ * 
+ * También permite:
+ * - Agregar nuevos bailarines (se agregarán a la base de la academia)
+ * - La asignación a coreografías se hace desde el modal de coreografía
+ */
 const DancersSection = ({
   academyId,
-  dancers,
+  dancers,           // Todos los bailarines de la academia
+  choreographies,    // Coreografías del evento (con sus bailarines asignados)
   onRefresh,
   isReadOnly,
 }) => {
@@ -104,6 +116,36 @@ const DancersSection = ({
 
   // Estados de validación
   const [curpValid, setCurpValid] = useState(null)
+
+  // Calcular bailarines asignados a coreografías del evento
+  // y las coreografías en las que participa cada uno
+  const assignedDancersWithChoreographies = useMemo(() => {
+    if (!choreographies || choreographies.length === 0) return []
+    
+    // Crear un mapa de bailarín -> coreografías
+    const dancerChoreographiesMap = new Map()
+    
+    choreographies.forEach((choreo) => {
+      const choreodancers = choreo.dancers || []
+      choreodancers.forEach((d) => {
+        const dancerId = d.dancerId || d.dancer?.id || d.id
+        const dancerData = d.dancer || dancers.find((dn) => dn.id === dancerId) || d
+        
+        if (!dancerChoreographiesMap.has(dancerId)) {
+          dancerChoreographiesMap.set(dancerId, {
+            dancer: dancerData,
+            choreographies: []
+          })
+        }
+        dancerChoreographiesMap.get(dancerId).choreographies.push({
+          id: choreo.id,
+          name: choreo.name
+        })
+      })
+    })
+    
+    return Array.from(dancerChoreographiesMap.values())
+  }, [choreographies, dancers])
 
   // Resetear formulario
   const resetForm = useCallback(() => {
@@ -237,24 +279,31 @@ const DancersSection = ({
       <CCardHeader className="d-flex justify-content-between align-items-center">
         <div>
           <CIcon icon={cilUser} className="me-2" />
-          <strong>Bailarines</strong>
-          <CBadge color="success" className="ms-2">{dancers?.length || 0}</CBadge>
+          <strong>Bailarines en este Evento</strong>
+          <CBadge color="success" className="ms-2">{assignedDancersWithChoreographies.length}</CBadge>
         </div>
         {!isReadOnly && (
           <CButton color="success" size="sm" onClick={handleOpenCreateModal}>
             <CIcon icon={cilPlus} className="me-1" />
-            Agregar Bailarín
+            Agregar Bailarín a Academia
           </CButton>
         )}
       </CCardHeader>
       <CCardBody>
-        {(!dancers || dancers.length === 0) ? (
+        {/* Mensaje informativo */}
+        <CAlert color="info" className="mb-3 small">
+          <CIcon icon={cilInfo} className="me-2" />
+          Aquí se muestran los bailarines asignados a las coreografías de este evento.
+          Para asignar bailarines a una coreografía, edita la coreografía en la pestaña "Coreografías".
+        </CAlert>
+        
+        {assignedDancersWithChoreographies.length === 0 ? (
           <div className="text-center py-5 text-body-secondary">
             <CIcon icon={cilUser} size="3xl" className="mb-3 opacity-50" />
-            <p className="mb-0">No hay bailarines registrados</p>
-            {!isReadOnly && (
-              <p className="small">Haz clic en "Agregar Bailarín" para comenzar</p>
-            )}
+            <p className="mb-0">No hay bailarines asignados a coreografías</p>
+            <p className="small">
+              Ve a la pestaña "Coreografías" y asigna bailarines al crear o editar una coreografía
+            </p>
           </div>
         ) : (
           <div className="table-responsive">
@@ -264,14 +313,14 @@ const DancersSection = ({
                   <CTableHeaderCell>Nombre</CTableHeaderCell>
                   <CTableHeaderCell>CURP</CTableHeaderCell>
                   <CTableHeaderCell className="text-center">Edad</CTableHeaderCell>
-                  <CTableHeaderCell>Contacto</CTableHeaderCell>
+                  <CTableHeaderCell>Participa en</CTableHeaderCell>
                   {!isReadOnly && (
                     <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
                   )}
                 </CTableRow>
               </CTableHead>
               <CTableBody>
-                {dancers.map((dancer) => {
+                {assignedDancersWithChoreographies.map(({ dancer, choreographies: dancerChoreos }) => {
                   // Si el bailarín tiene más de una academia, mostrar indicador
                   const isShared = dancer.academies && dancer.academies.length > 1
                   return (
@@ -301,10 +350,13 @@ const DancersSection = ({
                       ) : '—'}
                     </CTableDataCell>
                     <CTableDataCell>
-                      <div className="small">
-                        {dancer.email && <div>{dancer.email}</div>}
-                        {dancer.phone && <div className="text-body-secondary">{dancer.phone}</div>}
-                        {!dancer.email && !dancer.phone && '—'}
+                      <div className="d-flex flex-wrap gap-1">
+                        {dancerChoreos.map((choreo) => (
+                          <CBadge key={choreo.id} color="primary" className="small">
+                            <CIcon icon={cilMusicNote} size="sm" className="me-1" />
+                            {choreo.name}
+                          </CBadge>
+                        ))}
                       </div>
                     </CTableDataCell>
                     {!isReadOnly && (
@@ -314,18 +366,9 @@ const DancersSection = ({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenEditModal(dancer)}
-                          title="Editar"
+                          title="Editar datos del bailarín"
                         >
                           <CIcon icon={cilPencil} />
-                        </CButton>
-                        <CButton
-                          color="warning"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleUnlink(dancer.id, dancer.name)}
-                          title="Quitar de mi academia"
-                        >
-                          <CIcon icon={cilLink} />
                         </CButton>
                       </CTableDataCell>
                     )}
@@ -464,12 +507,14 @@ const DancersSection = ({
 DancersSection.propTypes = {
   academyId: PropTypes.string.isRequired,
   dancers: PropTypes.array,
+  choreographies: PropTypes.array,
   onRefresh: PropTypes.func,
   isReadOnly: PropTypes.bool,
 }
 
 DancersSection.defaultProps = {
   dancers: [],
+  choreographies: [],
   onRefresh: () => {},
   isReadOnly: false,
 }

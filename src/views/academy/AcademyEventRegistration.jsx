@@ -462,6 +462,7 @@ const AcademyEventRegistration = () => {
                   <DancersSection
                     academyId={effectiveAcademyId}
                     dancers={dancers}
+                    choreographies={choreographies}
                     onRefresh={handleRefresh}
                     isReadOnly={isReadOnly}
                   />
