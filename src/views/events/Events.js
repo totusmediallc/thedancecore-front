@@ -74,10 +74,18 @@ const LIMIT_OPTIONS = [10, 20, 50]
 
 const STATUS_FILTER_OPTIONS = [
   { value: '', label: 'Estado del evento: Todos' },
-  { value: 'upcoming', label: 'Próximos' },
-  { value: 'in-progress', label: 'En curso' },
-  { value: 'completed', label: 'Finalizados' },
-  { value: 'draft', label: 'Sin fecha' },
+  { value: 'draft', label: 'Borrador' },
+  { value: 'open', label: 'Abierto para registro' },
+  { value: 'closed', label: 'Registro cerrado' },
+  { value: 'finished', label: 'Finalizado' },
+]
+
+// Opciones de estado para el formulario
+const EVENT_STATUS_OPTIONS = [
+  { value: 'draft', label: 'Borrador', color: 'secondary', description: 'El evento no es visible para academias' },
+  { value: 'open', label: 'Abierto', color: 'success', description: 'Las academias pueden registrarse' },
+  { value: 'closed', label: 'Cerrado', color: 'warning', description: 'El registro está cerrado' },
+  { value: 'finished', label: 'Finalizado', color: 'dark', description: 'El evento ya terminó' },
 ]
 
 const MAX_BANNER_SIZE = 12 * 1024 * 1024 // 12 MB
@@ -192,28 +200,26 @@ const buildBannerUrl = (path) => {
 }
 
 const getEventStatus = (event) => {
+  // Si el evento tiene un status definido, usarlo directamente
+  if (event?.status) {
+    return event.status
+  }
+  
+  // Fallback: calcular basado en fechas (para compatibilidad)
   const now = Date.now()
   const start = event?.startDate ? new Date(event.startDate).getTime() : null
   const end = event?.endDate ? new Date(event.endDate).getTime() : null
 
   if (start && end) {
     if (now < start) {
-      return 'upcoming'
+      return 'draft'
     }
     if (now >= start && now <= end) {
-      return 'in-progress'
+      return 'open'
     }
     if (now > end) {
-      return 'completed'
+      return 'finished'
     }
-  }
-
-  if (start && !end) {
-    return now < start ? 'upcoming' : 'in-progress'
-  }
-
-  if (!start && end) {
-    return now <= end ? 'in-progress' : 'completed'
   }
 
   return 'draft'
@@ -221,15 +227,15 @@ const getEventStatus = (event) => {
 
 const getStatusBadgeProps = (status) => {
   switch (status) {
-    case 'upcoming':
-      return { color: 'info', text: 'Próximo' }
-    case 'in-progress':
-      return { color: 'success', text: 'En curso' }
-    case 'completed':
-      return { color: 'secondary', text: 'Finalizado' }
+    case 'open':
+      return { color: 'success', text: 'Abierto' }
+    case 'closed':
+      return { color: 'warning', text: 'Cerrado' }
+    case 'finished':
+      return { color: 'dark', text: 'Finalizado' }
     case 'draft':
     default:
-      return { color: 'warning', text: 'Borrador' }
+      return { color: 'secondary', text: 'Borrador' }
   }
 }
 
@@ -348,6 +354,10 @@ const EventFormModal = ({
         address: currentEvent.address ?? '',
         startDate: toInputDateTimeValue(currentEvent.startDate),
         endDate: toInputDateTimeValue(currentEvent.endDate),
+        status: currentEvent.status ?? 'draft',
+        registrationStartDate: toInputDateTimeValue(currentEvent.registrationStartDate),
+        registrationEndDate: toInputDateTimeValue(currentEvent.registrationEndDate),
+        updateDeadlineDate: toInputDateTimeValue(currentEvent.updateDeadlineDate),
         stateId: initialLocation.state?.id ? String(initialLocation.state.id) : '',
         municipalityId: initialLocation.municipality?.id
           ? String(initialLocation.municipality.id)
@@ -362,6 +372,10 @@ const EventFormModal = ({
       address: '',
       startDate: '',
       endDate: '',
+      status: 'draft',
+      registrationStartDate: '',
+      registrationEndDate: '',
+      updateDeadlineDate: '',
       stateId: '',
       municipalityId: '',
       colonyId: '',
@@ -799,7 +813,19 @@ const EventFormModal = ({
       place: formState.place.trim(),
       startDate: toIsoString(formState.startDate),
       endDate: toIsoString(formState.endDate),
+      status: formState.status,
       colonyId: formState.colonyId,
+    }
+
+    // Fechas de registro (opcionales)
+    if (formState.registrationStartDate) {
+      payload.registrationStartDate = toIsoString(formState.registrationStartDate)
+    }
+    if (formState.registrationEndDate) {
+      payload.registrationEndDate = toIsoString(formState.registrationEndDate)
+    }
+    if (formState.updateDeadlineDate) {
+      payload.updateDeadlineDate = toIsoString(formState.updateDeadlineDate)
     }
 
     if (formState.address.trim()) {
@@ -895,6 +921,94 @@ const EventFormModal = ({
               </CInputGroup>
               {errors.endDate && <div className="invalid-feedback d-block">{errors.endDate}</div>}
             </CCol>
+
+            {/* Sección de Estado y Registro */}
+            <CCol xs={12}>
+              <hr className="my-2" />
+              <h6 className="text-body-secondary mb-3">
+                <CIcon icon={cilCheckCircle} className="me-2" />
+                Estado del Evento y Registro
+              </h6>
+            </CCol>
+
+            <CCol xs={12} md={6}>
+              <CFormLabel htmlFor="event-status">Estado del evento</CFormLabel>
+              <CFormSelect
+                id="event-status"
+                value={formState.status}
+                onChange={handleChange('status')}
+                disabled={submitting || !isAdmin}
+              >
+                {EVENT_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} - {option.description}
+                  </option>
+                ))}
+              </CFormSelect>
+              <div className="form-text">
+                Solo cuando esté "Abierto" las academias podrán registrarse.
+              </div>
+            </CCol>
+
+            <CCol xs={12} md={6}>
+              <CFormLabel htmlFor="event-registration-start">Inicio de registro</CFormLabel>
+              <CInputGroup>
+                <CInputGroupText>
+                  <CIcon icon={cilCalendar} />
+                </CInputGroupText>
+                <CFormInput
+                  id="event-registration-start"
+                  type="datetime-local"
+                  value={formState.registrationStartDate}
+                  onChange={handleChange('registrationStartDate')}
+                  disabled={submitting || !isAdmin}
+                />
+              </CInputGroup>
+              <div className="form-text">Fecha desde la cual se acepta el registro.</div>
+            </CCol>
+
+            <CCol xs={12} md={6}>
+              <CFormLabel htmlFor="event-registration-end">Fin de registro</CFormLabel>
+              <CInputGroup>
+                <CInputGroupText>
+                  <CIcon icon={cilClock} />
+                </CInputGroupText>
+                <CFormInput
+                  id="event-registration-end"
+                  type="datetime-local"
+                  value={formState.registrationEndDate}
+                  onChange={handleChange('registrationEndDate')}
+                  disabled={submitting || !isAdmin}
+                />
+              </CInputGroup>
+              <div className="form-text">Fecha límite para nuevos registros.</div>
+            </CCol>
+
+            <CCol xs={12} md={6}>
+              <CFormLabel htmlFor="event-update-deadline">Límite de modificaciones</CFormLabel>
+              <CInputGroup>
+                <CInputGroupText>
+                  <CIcon icon={cilWarning} />
+                </CInputGroupText>
+                <CFormInput
+                  id="event-update-deadline"
+                  type="datetime-local"
+                  value={formState.updateDeadlineDate}
+                  onChange={handleChange('updateDeadlineDate')}
+                  disabled={submitting || !isAdmin}
+                />
+              </CInputGroup>
+              <div className="form-text">Después de esta fecha, las academias no podrán modificar su registro.</div>
+            </CCol>
+
+            <CCol xs={12}>
+              <hr className="my-2" />
+              <h6 className="text-body-secondary mb-3">
+                <CIcon icon={cilLocationPin} className="me-2" />
+                Ubicación
+              </h6>
+            </CCol>
+
             <CCol xs={12}>
               <CFormLabel htmlFor="event-address">Dirección detallada</CFormLabel>
               <CFormInput
@@ -1667,6 +1781,11 @@ const EventsManagement = () => {
                           <CBadge color={statusBadge.color} shape="rounded-pill" className="align-self-start">
                             {statusBadge.text}
                           </CBadge>
+                          {event.registrationEndDate && (
+                            <span className="small text-body-secondary">
+                              Registro hasta: {formatDateTime(event.registrationEndDate, { dateStyle: 'short', timeStyle: undefined })}
+                            </span>
+                          )}
                         </div>
                       </CTableDataCell>
                       <CTableDataCell>

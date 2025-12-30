@@ -11,23 +11,35 @@ import {
   cilReload,
   cilWarning,
   cilXCircle,
+  cilCheck,
+  cilX,
 } from '@coreui/icons'
 import {
   CAlert,
   CBadge,
   CButton,
+  CButtonGroup,
   CCard,
   CCardBody,
   CCardHeader,
   CCol,
   CFormSelect,
+  CModal,
+  CModalBody,
+  CModalFooter,
+  CModalHeader,
+  CModalTitle,
   CRow,
   CSpinner,
 } from '@coreui/react'
 
 import { usePermissions } from '../../hooks/usePermissions'
 import { listAcademies } from '../../services/academiesApi'
-import { getAcademyEvents } from '../../services/eventAcademiesApi'
+import {
+  getAcademyEvents,
+  acceptEventInvitation,
+  rejectEventInvitation,
+} from '../../services/eventAcademiesApi'
 import { HttpError } from '../../services/httpClient'
 
 // Configuración de estados
@@ -113,6 +125,11 @@ const AcademyEvents = () => {
   // Filtro de estado
   const [statusFilter, setStatusFilter] = useState('')
 
+  // Estados para acciones de invitación
+  const [actionLoading, setActionLoading] = useState(null) // eventId siendo procesado
+  const [feedback, setFeedback] = useState(null)
+  const [rejectModal, setRejectModal] = useState({ visible: false, event: null })
+
   // Determinar el academyId a usar
   const effectiveAcademyId = useMemo(() => {
     if (isAdmin && selectedAcademyId) {
@@ -195,18 +212,91 @@ const AcademyEvents = () => {
     navigate(`/academy/events/${eventId}`)
   }
 
+  // Aceptar invitación
+  const handleAcceptInvitation = async (eventId) => {
+    if (!effectiveAcademyId || !eventId) return
+
+    setActionLoading(eventId)
+    setFeedback(null)
+
+    try {
+      await acceptEventInvitation(effectiveAcademyId, eventId)
+      setFeedback({
+        type: 'success',
+        message: '¡Invitación aceptada! Ya puedes comenzar tu registro.',
+      })
+      await loadEvents()
+    } catch (err) {
+      console.error('Error accepting invitation:', err)
+      setFeedback({
+        type: 'danger',
+        message: getErrorMessage(err, 'Error al aceptar la invitación'),
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // Abrir modal de confirmación de rechazo
+  const handleOpenRejectModal = (event) => {
+    setRejectModal({ visible: true, event })
+  }
+
+  // Cerrar modal de rechazo
+  const handleCloseRejectModal = () => {
+    setRejectModal({ visible: false, event: null })
+  }
+
+  // Rechazar invitación (confirmado)
+  const handleConfirmReject = async () => {
+    const event = rejectModal.event
+    if (!effectiveAcademyId || !event) return
+
+    const eventId = event.eventId || event.id
+    setActionLoading(eventId)
+    setFeedback(null)
+    handleCloseRejectModal()
+
+    try {
+      await rejectEventInvitation(effectiveAcademyId, eventId)
+      setFeedback({
+        type: 'warning',
+        message: 'Invitación rechazada correctamente.',
+      })
+      await loadEvents()
+    } catch (err) {
+      console.error('Error rejecting invitation:', err)
+      setFeedback({
+        type: 'danger',
+        message: getErrorMessage(err, 'Error al rechazar la invitación'),
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // Limpiar feedback después de un tiempo
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(null), 5000)
+    return () => clearTimeout(timer)
+  }, [feedback])
+
   // Renderizar tarjeta de evento
   const renderEventCard = (item) => {
     const event = item.event || item
+    const eventId = item.eventId || event.id
     const statusConfig = STATUS_CONFIG[item.status] || STATUS_CONFIG.invited
     const eventStatusConfig = EVENT_STATUS_CONFIG[event.status] || EVENT_STATUS_CONFIG.draft
     const registrationEndingSoon = isDateSoon(event.registrationEndDate, 3)
+    const isProcessing = actionLoading === eventId
+    const isInvited = item.status === 'invited'
 
     return (
-      <CCard key={item.eventId || event.id} className="mb-3 border-start border-start-4" style={{ borderLeftColor: `var(--cui-${statusConfig.color})` }}>
+      <CCard key={eventId} className="mb-3 border-start border-start-4" style={{ borderLeftColor: `var(--cui-${statusConfig.color})` }}>
         <CCardBody>
           <CRow className="align-items-center">
-            <CCol md={6}>
+            <CCol md={5}>
               <h5 className="mb-1">{event.name}</h5>
               <div className="text-body-secondary small">
                 <CIcon icon={cilCalendar} className="me-1" size="sm" />
@@ -229,7 +319,7 @@ const AcademyEvents = () => {
                   {eventStatusConfig.label}
                 </CBadge>
               </div>
-              {registrationEndingSoon && item.status === 'invited' && (
+              {registrationEndingSoon && isInvited && (
                 <div className="mt-2">
                   <CBadge color="danger" textColor="white" className="small">
                     <CIcon icon={cilWarning} className="me-1" size="sm" />
@@ -238,15 +328,49 @@ const AcademyEvents = () => {
                 </div>
               )}
             </CCol>
-            <CCol md={3} className="text-md-end">
-              <CButton
-                color="primary"
-                size="sm"
-                onClick={() => handleViewEvent(item.eventId || event.id)}
-              >
-                {item.status === 'invited' ? 'Ver Invitación' : 'Ver Registro'}
-                <CIcon icon={cilExternalLink} className="ms-1" size="sm" />
-              </CButton>
+            <CCol md={4} className="text-md-end">
+              <div className="d-flex flex-wrap gap-2 justify-content-md-end">
+                {/* Botones de aceptar/rechazar para invitaciones pendientes */}
+                {isInvited && !isAdmin && (
+                  <CButtonGroup size="sm">
+                    <CButton
+                      color="success"
+                      disabled={isProcessing}
+                      onClick={() => handleAcceptInvitation(eventId)}
+                      title="Aceptar invitación"
+                    >
+                      {isProcessing ? (
+                        <CSpinner size="sm" />
+                      ) : (
+                        <>
+                          <CIcon icon={cilCheck} className="me-1" size="sm" />
+                          Aceptar
+                        </>
+                      )}
+                    </CButton>
+                    <CButton
+                      color="danger"
+                      variant="outline"
+                      disabled={isProcessing}
+                      onClick={() => handleOpenRejectModal(item)}
+                      title="Rechazar invitación"
+                    >
+                      <CIcon icon={cilX} size="sm" />
+                    </CButton>
+                  </CButtonGroup>
+                )}
+                
+                {/* Botón de ver detalles */}
+                <CButton
+                  color="primary"
+                  variant={isInvited && !isAdmin ? 'outline' : undefined}
+                  size="sm"
+                  onClick={() => handleViewEvent(eventId)}
+                >
+                  {isInvited ? 'Ver Detalles' : 'Ver Registro'}
+                  <CIcon icon={cilExternalLink} className="ms-1" size="sm" />
+                </CButton>
+              </div>
             </CCol>
           </CRow>
         </CCardBody>
@@ -269,6 +393,18 @@ const AcademyEvents = () => {
           </CButton>
         </CCol>
       </CRow>
+
+      {/* Mensaje de feedback */}
+      {feedback && (
+        <CAlert
+          color={feedback.type}
+          dismissible
+          onClose={() => setFeedback(null)}
+          className="mb-4"
+        >
+          {feedback.message}
+        </CAlert>
+      )}
 
       {/* Selector de academia (solo admin) */}
       {isAdmin && (
@@ -438,6 +574,44 @@ const AcademyEvents = () => {
           )}
         </>
       )}
+
+      {/* Modal de confirmación de rechazo */}
+      <CModal
+        visible={rejectModal.visible}
+        onClose={handleCloseRejectModal}
+        alignment="center"
+        backdrop="static"
+      >
+        <CModalHeader closeButton>
+          <CModalTitle>Rechazar Invitación</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p className="mb-3">
+            ¿Estás seguro de que deseas rechazar la invitación al evento{' '}
+            <strong>{rejectModal.event?.event?.name || rejectModal.event?.name}</strong>?
+          </p>
+          <CAlert color="warning" className="d-flex align-items-center mb-0">
+            <CIcon icon={cilWarning} className="me-2 flex-shrink-0" />
+            <div>
+              Esta acción no se puede deshacer. Si cambias de opinión, deberás
+              solicitar una nueva invitación al administrador.
+            </div>
+          </CAlert>
+        </CModalBody>
+        <CModalFooter className="bg-body-tertiary justify-content-between">
+          <CButton
+            color="secondary"
+            variant="ghost"
+            onClick={handleCloseRejectModal}
+          >
+            Cancelar
+          </CButton>
+          <CButton color="danger" onClick={handleConfirmReject}>
+            <CIcon icon={cilXCircle} className="me-2" />
+            Sí, rechazar invitación
+          </CButton>
+        </CModalFooter>
+      </CModal>
     </>
   )
 }

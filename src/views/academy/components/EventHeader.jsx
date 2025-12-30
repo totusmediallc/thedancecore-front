@@ -20,7 +20,7 @@ import {
   cilWarning,
   cilXCircle,
   cilPeople,
-  cilMusic,
+  cilMusicNote,
   cilUser,
 } from '@coreui/icons'
 
@@ -313,7 +313,7 @@ const EventHeader = ({
             <CRow className="mb-4 g-3">
               <CCol xs={6} md={3}>
                 <div className="border rounded p-3 text-center h-100">
-                  <CIcon icon={cilMusic} size="xl" className="text-primary mb-2" />
+                  <CIcon icon={cilMusicNote} size="xl" className="text-primary mb-2" />
                   <div className="fs-4 fw-bold">{stats.totalChoreographies || 0}</div>
                   <small className="text-body-secondary">Coreografías</small>
                 </div>

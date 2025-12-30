@@ -462,7 +462,68 @@ _Ninguno reportado actualmente_
 
 ---
 
-## � Historial de Cambios
+## 🔄 Historial de Cambios
+
+### v1.3.0 - 30/12/2024
+- **CRUD de Eventos actualizado** (`Events.js`):
+  - **Nuevo campo `status`**: Los eventos ahora tienen estado propio independiente de las fechas
+    - `draft`: Borrador - no visible para academias
+    - `open`: Abierto - las academias pueden registrarse
+    - `closed`: Cerrado - no se aceptan nuevos registros
+    - `finished`: Finalizado - evento terminado
+  - **Nuevos campos de fechas de registro**:
+    - `registrationStartDate`: Fecha desde la cual se acepta el registro
+    - `registrationEndDate`: Fecha límite para nuevos registros
+    - `updateDeadlineDate`: Fecha límite para modificaciones de academias
+  - **Formulario mejorado**:
+    - Sección "Estado del Evento y Registro" con selector de estado
+    - Campos de fecha para controlar el período de registro
+    - Descripciones explicativas en cada campo
+  - **Tabla actualizada**:
+    - Muestra el estado real del evento (no calculado por fechas)
+    - Muestra fecha límite de registro si está definida
+  - **Filtros actualizados**:
+    - Opciones de filtro ahora coinciden con los estados reales del backend
+
+### v1.2.1 - 30/12/2024
+- **Corrección de permisos para admin**:
+  - Admin ahora puede editar cuando el evento está en "borrador" (draft)
+  - Útil para configurar registros antes de abrir el evento
+  - Academias solo pueden editar cuando el evento está "abierto" (open)
+- **Mensajes de advertencia mejorados**:
+  - Alerta informativa cuando el evento está en borrador, cerrado o finalizado
+  - Mensaje diferente para admin y academia
+- **Mejoras en DancersSection**:
+  - Confirmación de desvincular muestra el nombre del bailarín
+  - Muestra mensaje de respuesta del backend tras desvincular
+  - Respuesta del backend incluye: `wasUnlinked`, `remainingAcademies`, `message`
+
+### v1.2.0 - 30/12/2024
+- **Vista integral de registro a evento** - Panel completo para academias:
+  - **DancersSection mejorado**:
+    - Cambio de "Eliminar" a "Desvincular": El botón ya no elimina bailarines del sistema, solo los desvincula de la academia
+    - Nuevo endpoint `unlinkDancerFromAcademy()` en `dancersApi.js`
+    - Indicador visual (badge con icono de enlace) cuando un bailarín está vinculado a múltiples academias
+    - Confirmación mejorada explicando que el bailarín no se elimina
+    - Icono cambiado de papelera (cilTrash) a enlace (cilLink) con color warning
+  - **Permisos de administrador**:
+    - El admin ahora puede editar registros de academias (antes era solo lectura)
+    - Útil para asistir a academias que necesiten ayuda
+  - **API dancersApi.js**:
+    - Nueva función `linkDancerToAcademy(dancerId, academyId)` 
+    - Nueva función `unlinkDancerFromAcademy(dancerId, academyId)`
+- **Correcciones**:
+  - Fix: icono `cilMusic` → `cilMusicNote` en ChoreographiesSection.jsx (3 lugares)
+
+### v1.1.1 - 30/12/2024
+- **Mejoras en listado de eventos para academia**:
+  - Botones rápidos de "Aceptar" y "Rechazar" en tarjetas de invitación pendiente
+  - Modal de confirmación para rechazar invitación con advertencia
+  - Feedback visual de acciones (éxito/error)
+  - Estado de carga durante procesamiento de acciones
+- **Correcciones**:
+  - Fix: icono `cilMusic` no exportado → reemplazado por `cilMusicNote`
+  - Fix: EventHeader.jsx error de importación
 
 ### v1.1.0 - 30/12/2024
 - **Gestión bidireccional Academia-Evento**:

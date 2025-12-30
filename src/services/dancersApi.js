@@ -93,6 +93,24 @@ export const deleteDancer = async (dancerId) => del(`${BASE_PATH}/${dancerId}`)
  */
 export const getDancer = async (dancerId) => get(`${BASE_PATH}/${dancerId}`)
 
+/**
+ * Vincula un bailarín existente a una academia
+ * @param {string} dancerId - ID del bailarín
+ * @param {string} academyId - ID de la academia
+ */
+export const linkDancerToAcademy = async (dancerId, academyId) => {
+  return post(`${BASE_PATH}/${dancerId}/link/${academyId}`)
+}
+
+/**
+ * Desvincula un bailarín de una academia (NO lo elimina del sistema)
+ * @param {string} dancerId - ID del bailarín
+ * @param {string} academyId - ID de la academia
+ */
+export const unlinkDancerFromAcademy = async (dancerId, academyId) => {
+  return del(`${BASE_PATH}/${dancerId}/unlink/${academyId}`)
+}
+
 export default {
   listDancers,
   createDancer,
@@ -100,4 +118,6 @@ export default {
   updateDancer,
   deleteDancer,
   getDancer,
+  linkDancerToAcademy,
+  unlinkDancerFromAcademy,
 }

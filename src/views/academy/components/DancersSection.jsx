@@ -27,6 +27,7 @@ import {
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import {
+  cilLink,
   cilPencil,
   cilPlus,
   cilTrash,
@@ -35,7 +36,7 @@ import {
   cilInfo,
 } from '@coreui/icons'
 
-import { createDancer, updateDancer, deleteDancer } from '../../../services/dancersApi'
+import { createDancer, updateDancer, unlinkDancerFromAcademy } from '../../../services/dancersApi'
 import { HttpError } from '../../../services/httpClient'
 
 const getErrorMessage = (error, fallback = 'Ocurrió un error inesperado') => {
@@ -200,17 +201,21 @@ const DancersSection = ({
     }
   }
 
-  // Eliminar bailarín
-  const handleDelete = async (dancerId) => {
-    if (!window.confirm('¿Estás seguro de eliminar este bailarín? Se eliminará de todas las coreografías asignadas.')) {
+  // Desvincular bailarín de la academia (no lo elimina del sistema)
+  const handleUnlink = async (dancerId, dancerName) => {
+    if (!window.confirm(`¿Estás seguro de quitar a "${dancerName}" de tu academia?\n\nEl bailarín no será eliminado del sistema, solo se quitará de tu lista. También se quitará de las coreografías donde esté asignado en este evento.`)) {
       return
     }
 
     try {
-      await deleteDancer(dancerId)
+      const response = await unlinkDancerFromAcademy(dancerId, academyId)
+      // Mostrar mensaje del backend si existe
+      if (response?.message) {
+        alert(response.message)
+      }
       onRefresh?.()
     } catch (err) {
-      alert(getErrorMessage(err, 'Error al eliminar el bailarín'))
+      alert(getErrorMessage(err, 'Error al quitar el bailarín'))
     }
   }
 
@@ -266,10 +271,24 @@ const DancersSection = ({
                 </CTableRow>
               </CTableHead>
               <CTableBody>
-                {dancers.map((dancer) => (
+                {dancers.map((dancer) => {
+                  // Si el bailarín tiene más de una academia, mostrar indicador
+                  const isShared = dancer.academies && dancer.academies.length > 1
+                  return (
                   <CTableRow key={dancer.id}>
                     <CTableDataCell>
-                      <div className="fw-semibold">{dancer.name}</div>
+                      <div className="d-flex align-items-center">
+                        <div className="fw-semibold">{dancer.name}</div>
+                        {isShared && (
+                          <CBadge 
+                            color="info" 
+                            className="ms-2" 
+                            title={`Vinculado a ${dancer.academies.length} academias`}
+                          >
+                            <CIcon icon={cilLink} size="sm" />
+                          </CBadge>
+                        )}
+                      </div>
                     </CTableDataCell>
                     <CTableDataCell>
                       <code className="small">{dancer.curp}</code>
@@ -300,18 +319,19 @@ const DancersSection = ({
                           <CIcon icon={cilPencil} />
                         </CButton>
                         <CButton
-                          color="danger"
+                          color="warning"
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(dancer.id)}
-                          title="Eliminar"
+                          onClick={() => handleUnlink(dancer.id, dancer.name)}
+                          title="Quitar de mi academia"
                         >
-                          <CIcon icon={cilTrash} />
+                          <CIcon icon={cilLink} />
                         </CButton>
                       </CTableDataCell>
                     )}
                   </CTableRow>
-                ))}
+                  )
+                })}
               </CTableBody>
             </CTable>
           </div>

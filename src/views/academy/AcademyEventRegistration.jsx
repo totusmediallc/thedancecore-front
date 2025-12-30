@@ -210,17 +210,38 @@ const AcademyEventRegistration = () => {
     const eventStatus = summaryData.event?.status
     
     // Es solo lectura si:
-    // - El estado es rejected, registered o completed
-    // - El evento no está abierto
-    // - La fecha límite de modificación ya pasó
+    // - El estado de participación es rejected, registered o completed
     if (['rejected', 'registered', 'completed'].includes(status)) return true
-    if (eventStatus !== 'open') return true
     
+    // Para usuarios de academia: solo pueden editar si el evento está abierto
+    // Para admin: puede editar siempre (para ayudar a configurar)
+    if (!isAdmin && eventStatus !== 'open') return true
+    
+    // Si la fecha límite de modificación ya pasó (solo aplica a academias)
     const updateDeadline = summaryData.event?.updateDeadlineDate
-    if (updateDeadline && new Date(updateDeadline) < new Date()) return true
+    if (!isAdmin && updateDeadline && new Date(updateDeadline) < new Date()) return true
     
     return false
-  }, [summaryData])
+  }, [summaryData, isAdmin])
+
+  // Mensaje de advertencia para estado del evento
+  const eventStatusWarning = useMemo(() => {
+    if (!summaryData?.event) return null
+    const eventStatus = summaryData.event.status
+    
+    if (eventStatus === 'draft') {
+      return isAdmin 
+        ? 'El evento está en borrador. Como admin puedes configurar el registro.'
+        : 'El evento aún no está abierto para registro. Espera a que el administrador lo abra.'
+    }
+    if (eventStatus === 'closed') {
+      return 'El registro para este evento está cerrado.'
+    }
+    if (eventStatus === 'finished') {
+      return 'Este evento ya finalizó.'
+    }
+    return null
+  }, [summaryData, isAdmin])
 
   // Datos extraídos del summary
   const event = summaryData?.event
@@ -351,6 +372,14 @@ const AcademyEventRegistration = () => {
       {/* Contenido principal */}
       {!loading && !error && summaryData && (
         <>
+          {/* Advertencia de estado del evento */}
+          {eventStatusWarning && (
+            <CAlert color={isAdmin ? 'info' : 'warning'} className="mb-4">
+              <CIcon icon={cilWarning} className="me-2" />
+              {eventStatusWarning}
+            </CAlert>
+          )}
+
           {/* Header del evento */}
           <EventHeader
             event={event}
@@ -360,7 +389,7 @@ const AcademyEventRegistration = () => {
             onRejectInvitation={handleRejectInvitation}
             onCompleteRegistration={handleCompleteRegistration}
             isSubmitting={submitting}
-            isReadOnly={isReadOnly || isAdmin}
+            isReadOnly={isReadOnly}
           />
 
           {/* Tabs de contenido (solo si aceptó la invitación) */}

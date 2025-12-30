@@ -33,7 +33,7 @@ import CIcon from '@coreui/icons-react'
 import {
   cilCheckCircle,
   cilMinus,
-  cilMusic,
+  cilMusicNote,
   cilPencil,
   cilPlus,
   cilTrash,
@@ -327,7 +327,7 @@ const ChoreographiesSection = ({
     <CCard className="mb-4">
       <CCardHeader className="d-flex justify-content-between align-items-center">
         <div>
-          <CIcon icon={cilMusic} className="me-2" />
+          <CIcon icon={cilMusicNote} className="me-2" />
           <strong>Coreografías</strong>
           <CBadge color="primary" className="ms-2">{choreographies?.length || 0}</CBadge>
         </div>
@@ -346,7 +346,7 @@ const ChoreographiesSection = ({
       <CCardBody>
         {(!choreographies || choreographies.length === 0) ? (
           <div className="text-center py-5 text-body-secondary">
-            <CIcon icon={cilMusic} size="3xl" className="mb-3 opacity-50" />
+            <CIcon icon={cilMusicNote} size="3xl" className="mb-3 opacity-50" />
             <p className="mb-0">No hay coreografías registradas</p>
             {!isReadOnly && (
               <p className="small">Haz clic en "Agregar Coreografía" para comenzar</p>
