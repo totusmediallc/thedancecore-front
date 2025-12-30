@@ -37,6 +37,7 @@ import {
   rejectEventInvitation,
   completeEventRegistration,
 } from '../../services/eventAcademiesApi'
+import { getEventAcademyCoaches } from '../../services/eventAcademyCoachesApi'
 import { HttpError } from '../../services/httpClient'
 
 import {
@@ -77,6 +78,7 @@ const AcademyEventRegistration = () => {
   // Datos del registro
   const [summaryData, setSummaryData] = useState(null)
   const [choreographies, setChoreographies] = useState([])
+  const [coaches, setCoaches] = useState([])
   const [dancers, setDancers] = useState([])
 
   // Tab activa
@@ -122,15 +124,19 @@ const AcademyEventRegistration = () => {
     setError(null)
 
     try {
-      // Cargar resumen, coreografías y bailarines en paralelo
-      const [summaryResponse, choreographiesResponse, dancersResponse] = await Promise.all([
+      // Cargar resumen, coreografías, coaches y bailarines en paralelo
+      const [summaryResponse, choreographiesResponse, coachesResponse, dancersResponse] = await Promise.all([
         getRegistrationSummary(eventId, effectiveAcademyId),
         getEventAcademyChoreographies(eventId, effectiveAcademyId),
+        getEventAcademyCoaches(eventId, effectiveAcademyId),
         listDancers({ academyId: effectiveAcademyId, limit: 500 }),
       ])
 
       setSummaryData(summaryResponse)
       setDancers(dancersResponse?.data || dancersResponse || [])
+      
+      // Los coaches pueden venir como array directo o con .data
+      setCoaches(coachesResponse?.data || coachesResponse || [])
       
       // Las coreografías pueden venir como array directo o con .data
       const rawChoreographies = choreographiesResponse?.data || choreographiesResponse || []
@@ -272,8 +278,7 @@ const AcademyEventRegistration = () => {
   const event = summaryData?.event
   const registration = summaryData?.registration
   const stats = summaryData?.stats
-  // choreographies viene del estado separado, no del summary
-  const coaches = summaryData?.coaches || []
+  // choreographies y coaches vienen del estado separado, no del summary
   const order = summaryData?.order
 
   // Obtener nombre de academia para mostrar

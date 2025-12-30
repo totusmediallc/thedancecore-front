@@ -341,25 +341,109 @@ const EventHeader = ({
               </CCol>
             </CRow>
 
-            {/* Barra de progreso (solo si está en registro) */}
+            {/* Barra de progreso mejorada (solo si está en registro) */}
             {registration.status === 'accepted' && (
-              <div className="mb-4">
-                <div className="d-flex justify-content-between mb-2">
+              <div className="mb-4 p-3 bg-body-tertiary rounded">
+                <div className="d-flex justify-content-between align-items-center mb-2">
                   <span className="fw-semibold">Progreso del registro</span>
-                  <span className="text-body-secondary">{registrationProgress}%</span>
+                  <CBadge 
+                    color={registrationProgress >= 70 ? 'success' : registrationProgress >= 40 ? 'warning' : 'danger'}
+                    className="px-2 py-1"
+                  >
+                    {registrationProgress}% completado
+                  </CBadge>
                 </div>
-                <CProgress 
-                  value={registrationProgress} 
-                  color={registrationProgress >= 70 ? 'success' : 'warning'}
-                  className="mb-2"
-                  style={{ height: '10px' }}
-                />
-                <small className="text-body-secondary">
-                  {registrationProgress < 70 
-                    ? 'Completa al menos el 70% para poder enviar tu registro'
-                    : '¡Listo! Puedes enviar tu registro'
-                  }
-                </small>
+                
+                {/* Barra de progreso con segmentos visuales */}
+                <div className="position-relative mb-3">
+                  <CProgress 
+                    className="mb-0"
+                    style={{ height: '24px', borderRadius: '12px', backgroundColor: '#e9ecef' }}
+                  >
+                    <div 
+                      className="progress-bar"
+                      role="progressbar"
+                      style={{
+                        width: `${registrationProgress}%`,
+                        background: registrationProgress >= 70 
+                          ? 'linear-gradient(90deg, #28a745 0%, #20c997 100%)'
+                          : registrationProgress >= 40 
+                            ? 'linear-gradient(90deg, #ffc107 0%, #fd7e14 100%)'
+                            : 'linear-gradient(90deg, #dc3545 0%, #e74c3c 100%)',
+                        borderRadius: '12px',
+                        transition: 'width 0.6s ease',
+                      }}
+                    />
+                  </CProgress>
+                  {/* Línea indicadora del mínimo requerido (70%) */}
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      left: '70%',
+                      top: '-4px',
+                      bottom: '-4px',
+                      width: '3px',
+                      backgroundColor: '#6c757d',
+                      borderRadius: '2px',
+                      zIndex: 1,
+                    }}
+                    title="Mínimo requerido: 70%"
+                  />
+                </div>
+
+                {/* Indicadores de cada sección */}
+                <div className="d-flex justify-content-between flex-wrap gap-2 small">
+                  <div className="d-flex align-items-center">
+                    <span 
+                      className={`rounded-circle d-inline-block me-1 ${stats.totalChoreographies > 0 ? 'bg-success' : 'bg-secondary'}`}
+                      style={{ width: '10px', height: '10px' }}
+                    />
+                    <span className={stats.totalChoreographies > 0 ? 'text-success' : 'text-body-secondary'}>
+                      Coreografías {stats.totalChoreographies > 0 ? '✓' : ''}
+                    </span>
+                  </div>
+                  <div className="d-flex align-items-center">
+                    <span 
+                      className={`rounded-circle d-inline-block me-1 ${stats.totalDancers > 0 ? 'bg-success' : 'bg-secondary'}`}
+                      style={{ width: '10px', height: '10px' }}
+                    />
+                    <span className={stats.totalDancers > 0 ? 'text-success' : 'text-body-secondary'}>
+                      Bailarines {stats.totalDancers > 0 ? '✓' : ''}
+                    </span>
+                  </div>
+                  <div className="d-flex align-items-center">
+                    <span 
+                      className={`rounded-circle d-inline-block me-1 ${stats.totalCoaches > 0 ? 'bg-success' : 'bg-secondary'}`}
+                      style={{ width: '10px', height: '10px' }}
+                    />
+                    <span className={stats.totalCoaches > 0 ? 'text-success' : 'text-body-secondary'}>
+                      Coaches {stats.totalCoaches > 0 ? '✓' : ''}
+                    </span>
+                  </div>
+                  <div className="d-flex align-items-center">
+                    <span 
+                      className={`rounded-circle d-inline-block me-1 ${stats.totalTshirtItems > 0 ? 'bg-success' : 'bg-secondary'}`}
+                      style={{ width: '10px', height: '10px' }}
+                    />
+                    <span className={stats.totalTshirtItems > 0 ? 'text-success' : 'text-body-secondary'}>
+                      Playeras {stats.totalTshirtItems > 0 ? '✓' : ''}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-3 text-center">
+                  {registrationProgress < 70 ? (
+                    <small className="text-warning fw-medium">
+                      <CIcon icon={cilWarning} size="sm" className="me-1" />
+                      Completa al menos el 70% para poder enviar tu registro
+                    </small>
+                  ) : (
+                    <small className="text-success fw-medium">
+                      <CIcon icon={cilCheckCircle} size="sm" className="me-1" />
+                      ¡Listo! Tu registro está completo y puedes enviarlo
+                    </small>
+                  )}
+                </div>
               </div>
             )}
 
